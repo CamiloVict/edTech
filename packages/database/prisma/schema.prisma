@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Rol principal en el MVP: un usuario tiene como máximo un rol activo.
+enum UserRole {
+  CONSUMER
+  PROVIDER
+}
+
+/// Progreso global del usuario en la app (no confundir con isProfileCompleted del perfil).
+enum OnboardingStep {
+  PENDING_ROLE
+  PENDING_PROFILE
+  COMPLETED
+}
+
+enum ServiceMode {
+  IN_PERSON
+  ONLINE
+  HYBRID
+}
+
+/// Docente vs cuidado / babysitting (un perfil puede ofrecer ambos).
+enum ProviderKind {
+  TEACHER
+  BABYSITTER
+}
+
+model User {
+  id              String          @id @default(cuid())
+  clerkUserId     String          @unique @map("clerk_user_id")
+  email           String
+  role            UserRole?
+  onboardingStep  OnboardingStep  @default(PENDING_ROLE) @map("onboarding_step")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  consumerProfile ConsumerProfile?
+  providerProfile ProviderProfile?
+
+  @@index([email])
+  @@map("users")
+}
+
+model ConsumerProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName              String?   @map("full_name")
+  phone                 String?
+  city                  String?
+  relationshipToChild   String?   @map("relationship_to_child")
+  isProfileCompleted    Boolean   @default(false) @map("is_profile_completed")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  children              Child[]
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@map("consumer_profiles")
+}
+
+model ProviderProfile {
+  id                    String       @id @default(cuid())
+  userId                String       @unique @map("user_id")
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName              String?      @map("full_name")
+  bio                   String?
+  yearsOfExperience     Int?         @map("years_of_experience")
+  focusAreas            String[]     @default([]) @map("focus_areas")
+  serviceMode           ServiceMode? @map("service_mode")
+  city                  String?
+  isProfileCompleted    Boolean      @default(false) @map("is_profile_completed")
+  onboardingCompletedAt DateTime?    @map("onboarding_completed_at")
+  /// URL de foto (storage propio o CDN); sin modelo de archivos aún.
+  photoUrl              String?      @map("photo_url")
+  /// Promedio mostrado (reviews reales vendrán después; ahora editable / seed).
+  averageRating         Decimal      @default(0) @map("average_rating") @db.Decimal(3, 2)
+  ratingCount           Int          @default(0) @map("rating_count")
+  isAvailable           Boolean      @default(true) @map("is_available")
+  /// Texto libre hasta tener schedules (ej. "Lun–Jue 8:00–14:00").
+  availabilitySummary   String?      @map("availability_summary")
+  kinds                 ProviderKind[] @default([TEACHER]) @map("kinds")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  @@index([isAvailable])
+  @@map("provider_profiles")
+}
+
+model Child {
+  id                String          @id @default(cuid())
+  consumerProfileId String          @map("consumer_profile_id")
+  consumerProfile   ConsumerProfile @relation(fields: [consumerProfileId], references: [id], onDelete: Cascade)
+  firstName         String          @map("first_name")
+  birthDate         DateTime        @map("birth_date") @db.Date
+  interests         String?
+  notes             String?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@index([consumerProfileId])
+  @@map("children")
+}
