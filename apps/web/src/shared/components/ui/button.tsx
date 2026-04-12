@@ -8,11 +8,11 @@ type ButtonProps = PropsWithChildren<
 
 const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
-    'bg-emerald-800 text-white shadow-sm hover:bg-emerald-900 disabled:opacity-50',
+    'bg-primary text-white shadow-sm hover:bg-primary-hover disabled:opacity-50',
   secondary:
-    'border border-stone-200 bg-white text-stone-900 shadow-sm hover:bg-stone-50 disabled:opacity-50',
+    'border border-border bg-card text-foreground shadow-sm hover:bg-muted disabled:opacity-50',
   ghost:
-    'text-stone-700 hover:bg-stone-100 disabled:opacity-50',
+    'text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50',
 };
 
 const baseButtonClass =

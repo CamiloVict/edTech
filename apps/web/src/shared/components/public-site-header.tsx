@@ -29,7 +29,7 @@ export function PublicSiteHeader() {
         <SiteLogo href="/" />
         <nav className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           {!isLoaded ? (
-            <span className="h-9 w-20 animate-pulse rounded-lg bg-stone-100" />
+            <span className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
           ) : !isSignedIn ? (
             <>
               <Link
@@ -52,7 +52,7 @@ export function PublicSiteHeader() {
               </Link>
 
               {navLoading ? (
-                <span className="px-2 py-2 text-xs text-stone-500">Cargando menú…</span>
+                <span className="px-2 py-2 text-xs text-muted-foreground">Cargando menú…</span>
               ) : bootstrapQuery.isError ? (
                 <Link
                   href="/mi-espacio"

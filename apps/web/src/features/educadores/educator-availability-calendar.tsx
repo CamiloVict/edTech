@@ -28,43 +28,44 @@ export function EducatorAvailabilityCalendar({ blocks }: { blocks: Block[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5 text-xs text-emerald-950 sm:text-sm">
-        <p className="font-semibold">Cómo leer el calendario</p>
-        <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-emerald-900/90">
+      <div className="rounded-xl border border-accent/30 bg-accent-soft/25 px-3 py-2.5 text-xs text-foreground sm:text-sm">
+        <p className="font-semibold text-primary">Cómo leer el calendario</p>
+        <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-muted-foreground">
           <li>
-            Las franjas <span className="font-semibold">verdes</span> son
-            ventanas en las que el educador acepta solicitudes de cita.
+            Las franjas en <span className="font-semibold text-primary">azul</span>{' '}
+            son ventanas en las que el educador acepta solicitudes de clase.
           </li>
           <li>
-            Cambia a <span className="font-semibold">Semana</span> o{' '}
-            <span className="font-semibold">Día</span> para ver horarios
-            concretos; <span className="font-semibold">Lista</span> resume la
+            Cambia a <span className="font-semibold text-foreground">Semana</span>{' '}
+            o <span className="font-semibold text-foreground">Día</span> para ver
+            horarios concretos;{' '}
+            <span className="font-semibold text-foreground">Lista</span> resume la
             semana en filas.
           </li>
         </ul>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-stone-200 bg-white p-2 shadow-sm sm:p-3">
-        <AvailabilityFullCalendar blocks={blocks} height={520} />
+      <div className="overflow-hidden rounded-xl border border-border bg-card p-2 shadow-sm sm:p-3">
+        <AvailabilityFullCalendar blocks={blocks} height={560} />
       </div>
 
       {upcomingList.length > 0 ? (
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wide text-stone-500">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
             Próximas ventanas
           </h4>
           <ul className="mt-2 space-y-2">
             {upcomingList.map((b) => (
               <li
                 key={b.id}
-                className="flex gap-3 rounded-xl border border-stone-100 bg-white px-3 py-2.5 text-sm shadow-sm"
+                className="flex gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-sm shadow-sm"
               >
                 <span
-                  className="w-1 shrink-0 rounded-full bg-linear-to-b from-emerald-500 to-emerald-800"
+                  className="w-1 shrink-0 rounded-full bg-linear-to-b from-primary to-primary-hover"
                   aria-hidden
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-stone-900">
+                  <p className="font-medium text-foreground">
                     {b.start.toLocaleString('es', {
                       weekday: 'short',
                       day: 'numeric',
@@ -82,7 +83,7 @@ export function EducatorAvailabilityCalendar({ blocks }: { blocks: Block[] }) {
                     })}
                   </p>
                   {b.isAllDay ? (
-                    <p className="mt-0.5 text-xs text-stone-500">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Día completo · {b.timezone}
                     </p>
                   ) : null}
@@ -92,7 +93,7 @@ export function EducatorAvailabilityCalendar({ blocks }: { blocks: Block[] }) {
           </ul>
         </div>
       ) : (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-muted-foreground">
           No hay ventanas futuras publicadas en el calendario.
         </p>
       )}

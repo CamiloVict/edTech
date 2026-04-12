@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Trofo School — Educadores y cuidadores para tu familia',
-    template: '%s · Trofo School',
+    default: 'Edify — Educadores y cuidadores para tu familia',
+    template: '%s · Edify',
   },
   description:
     'Conecta con educadores y cuidadores de confianza para la primera infancia. Perfiles verificados, valoraciones y disponibilidad clara.',
@@ -46,7 +46,7 @@ export default function RootLayout({
     >
       <html lang="es">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-stone-50 font-sans text-stone-900 antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
         >
           <QueryProvider>{children}</QueryProvider>
         </body>

@@ -10,7 +10,7 @@ export async function generateMetadata({
   const { providerProfileId } = await params;
   const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
   if (!base) {
-    return { title: 'Educador | Trofo School' };
+    return { title: 'Educador | Edify' };
   }
   try {
     const res = await fetch(
@@ -18,7 +18,7 @@ export async function generateMetadata({
       { next: { revalidate: 120 } },
     );
     if (!res.ok) {
-      return { title: 'Educador | Trofo School' };
+      return { title: 'Educador | Edify' };
     }
     const p = (await res.json()) as {
       fullName?: string | null;
@@ -28,11 +28,11 @@ export async function generateMetadata({
     const name = p.fullName?.trim() || 'Educador';
     const desc = [p.bio, p.city].filter(Boolean).join(' · ').slice(0, 160);
     return {
-      title: `${name} | Trofo School`,
-      description: desc || `Perfil de ${name} en Trofo School.`,
+      title: `${name} | Edify`,
+      description: desc || `Perfil de ${name} en Edify.`,
     };
   } catch {
-    return { title: 'Educador | Trofo School' };
+    return { title: 'Educador | Edify' };
   }
 }
 

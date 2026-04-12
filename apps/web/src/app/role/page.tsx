@@ -50,7 +50,7 @@ export default function RoleSelectionPage() {
 
   return (
     <FriendlyFormShell
-      title="¿Cómo usarás Trofo School?"
+      title="¿Cómo usarás Edify?"
       subtitle="Un clic. Luego completarás tu perfil en una sola pantalla. (Paso 1 de 3: elegir tipo de cuenta.)"
       maxWidthClass="max-w-4xl"
     >

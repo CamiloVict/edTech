@@ -16,21 +16,21 @@ export function HelpCallout({
   if (compact) {
     return (
       <aside
-        className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 text-sm text-emerald-950"
+        className="rounded-xl border border-accent/30 bg-accent-soft/25 px-3 py-2 text-sm text-foreground"
         role="note"
       >
-        <span className="font-semibold text-emerald-900">{title}: </span>
-        <span className="text-emerald-900/90">{children}</span>
+        <span className="font-semibold text-primary">{title}: </span>
+        <span className="text-muted-foreground">{children}</span>
       </aside>
     );
   }
   return (
     <aside
-      className="rounded-xl border border-emerald-200/80 bg-emerald-50/90 px-3 py-2.5 text-sm leading-snug text-emerald-950"
+      className="rounded-xl border border-accent/30 bg-accent-soft/25 px-3 py-2.5 text-sm leading-snug text-foreground"
       role="note"
     >
-      <p className="font-semibold text-emerald-900">{title}</p>
-      <div className="mt-1 text-emerald-900/90">{children}</div>
+      <p className="font-semibold text-primary">{title}</p>
+      <div className="mt-1 text-muted-foreground">{children}</div>
     </aside>
   );
 }
@@ -45,7 +45,7 @@ export function StepIndicator({
   return (
     <nav
       aria-label="Pasos del formulario"
-      className="mb-4 rounded-xl border border-stone-200 bg-white px-3 py-3 shadow-sm"
+      className="mb-4 rounded-xl border border-border bg-card px-3 py-3 shadow-sm"
     >
       <ol className="flex items-start justify-between gap-1 sm:gap-3">
         {steps.map((s, i) => {
@@ -60,10 +60,10 @@ export function StepIndicator({
               <span
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold sm:h-9 sm:w-9 sm:text-sm ${
                   done
-                    ? 'bg-emerald-800 text-white'
+                    ? 'bg-primary text-white'
                     : active
-                      ? 'bg-emerald-100 text-emerald-900 ring-2 ring-emerald-600 ring-offset-1'
-                      : 'bg-stone-200 text-stone-600'
+                      ? 'bg-accent-soft text-primary ring-2 ring-accent ring-offset-1'
+                      : 'bg-muted text-muted-foreground'
                 }`}
                 aria-current={active ? 'step' : undefined}
               >
@@ -71,7 +71,7 @@ export function StepIndicator({
               </span>
               <span
                 className={`line-clamp-2 text-[11px] font-semibold leading-tight sm:text-xs ${
-                  active ? 'text-stone-900' : 'text-stone-500'
+                  active ? 'text-foreground' : 'text-muted-foreground'
                 }`}
               >
                 {s.label}
@@ -105,16 +105,16 @@ export function FriendlyFormShell({
   maxWidthClass?: string;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/70 via-stone-50 to-stone-100">
+    <div className="min-h-screen bg-linear-to-b from-accent-soft/15 via-background to-muted/40">
       {topBar ? (
-        <div className="border-b border-stone-200/80 bg-white/90 backdrop-blur-sm">
+        <div className="border-b border-border bg-card/90 backdrop-blur-sm">
           <div
             className={`mx-auto flex ${maxWidthClass} items-center justify-between px-4 py-2.5 sm:px-6`}
           >
             <SiteLogo href="/" />
             <Link
               href="/"
-              className="text-sm font-medium text-stone-600 hover:text-emerald-800"
+              className="text-sm font-medium text-muted-foreground hover:text-primary"
             >
               Inicio
             </Link>
@@ -128,10 +128,10 @@ export function FriendlyFormShell({
           <StepIndicator steps={steps} current={currentStep} />
         ) : null}
         <header className="mb-4 text-center sm:mb-5 sm:text-left">
-          <h1 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             {title}
           </h1>
-          <div className="mt-2 text-sm leading-snug text-stone-600 sm:text-base">
+          <div className="mt-2 text-sm leading-snug text-muted-foreground sm:text-base">
             {subtitle}
           </div>
         </header>
@@ -141,7 +141,7 @@ export function FriendlyFormShell({
         ) : null}
       </main>
       {footer ? (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200 bg-white/95 p-3 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] backdrop-blur-md sm:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 p-3 shadow-[0_-6px_24px_rgba(0,0,0,0.08)] backdrop-blur-md sm:hidden">
           <div className={`mx-auto ${maxWidthClass} px-4`}>{footer}</div>
         </div>
       ) : null}
@@ -162,23 +162,23 @@ export function AuthGateShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50/90 via-white to-stone-100">
+    <div className="min-h-screen bg-linear-to-br from-accent-soft/20 via-card to-background">
       <div className="mx-auto grid min-h-screen max-w-6xl lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <aside className="relative hidden flex-col justify-center gap-6 border-stone-200/80 px-10 py-12 lg:flex lg:border-r">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-emerald-100/80 via-transparent to-transparent" />
+        <aside className="relative hidden flex-col justify-center gap-6 border-border/80 px-10 py-12 lg:flex lg:border-r">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-accent-soft/60 via-transparent to-transparent" />
           <div className="relative">
             <SiteLogo href="/" />
-            <h1 className="mt-10 text-3xl font-bold leading-tight tracking-tight text-stone-900">
+            <h1 className="mt-10 text-3xl font-bold leading-tight tracking-tight text-foreground">
               {title}
             </h1>
-            <p className="mt-4 text-lg leading-relaxed text-stone-600">
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
               {subtitle}
             </p>
-            <ul className="mt-8 space-y-4 text-base text-stone-700">
+            <ul className="mt-8 space-y-4 text-base text-foreground/90">
               {bullets.map((b) => (
                 <li key={b} className="flex gap-3">
                   <span
-                    className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-800 text-xs font-bold text-white"
+                    className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white"
                     aria-hidden
                   >
                     ✓
@@ -189,7 +189,7 @@ export function AuthGateShell({
             </ul>
             <Link
               href="/"
-              className="mt-10 inline-flex text-sm font-semibold text-emerald-800 hover:text-emerald-950"
+              className="mt-10 inline-flex text-sm font-semibold text-primary hover:text-primary-hover"
             >
               ← Volver a la página principal
             </Link>
@@ -199,15 +199,15 @@ export function AuthGateShell({
           <div className="mb-6 w-full max-w-md lg:hidden">
             <SiteLogo href="/" />
           </div>
-          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl shadow-stone-300/25">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-primary/10">
             {children}
           </div>
-          <p className="mt-6 max-w-md text-center text-sm leading-relaxed text-stone-600 lg:hidden">
+          <p className="mt-6 max-w-md text-center text-sm leading-relaxed text-muted-foreground lg:hidden">
             {subtitle}
           </p>
           <Link
             href="/"
-            className="mt-4 text-sm font-medium text-emerald-800 lg:hidden"
+            className="mt-4 text-sm font-medium text-primary lg:hidden"
           >
             Volver al inicio
           </Link>

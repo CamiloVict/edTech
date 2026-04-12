@@ -123,9 +123,9 @@ export function ProviderSchedulingSection() {
           Crea bloques en los que las familias pueden pedir cita (incluye días
           completos para babysitting si lo necesitas).
         </p>
-        <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-950 sm:text-sm">
+        <div className="mt-3 rounded-xl border border-accent/25 bg-accent-soft/20 px-3 py-2 text-xs text-foreground sm:text-sm">
           <p className="font-semibold">Calendario</p>
-          <p className="mt-1 text-emerald-900/90">
+          <p className="mt-1 text-muted-foreground">
             En <span className="font-medium">Mes</span>,{' '}
             <span className="font-medium">Semana</span> o{' '}
             <span className="font-medium">Día</span>, arrastra para marcar una
@@ -262,7 +262,7 @@ export function ProviderSchedulingSection() {
                 key={a.id}
                 className="rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                   Servicio para:{' '}
                   <span className="text-base font-bold normal-case tracking-normal text-stone-900">
                     {a.child?.firstName ?? '— (sin indicar)'}
@@ -324,7 +324,7 @@ export function ProviderSchedulingSection() {
                 className="flex flex-col gap-1 rounded-lg border border-stone-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="font-medium text-stone-800">
-                  <span className="text-emerald-900">
+                  <span className="text-primary">
                     {a.child?.firstName ?? '—'}
                   </span>
                   {' · '}

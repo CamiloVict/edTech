@@ -170,7 +170,7 @@ export function FormativePlansSection() {
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Oferta formativa
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
@@ -191,11 +191,11 @@ export function FormativePlansSection() {
               key={plan.id}
               className="rounded-2xl border border-stone-200 bg-stone-50/50 shadow-sm"
             >
-              <header className="border-b border-stone-200 bg-gradient-to-r from-emerald-50/80 to-white px-5 py-4 sm:px-6 sm:py-5">
+              <header className="border-b border-border bg-linear-to-r from-accent-soft/30 to-card px-5 py-4 sm:px-6 sm:py-5">
                 <h3 className="text-lg font-bold text-stone-900 sm:text-xl">
                   {plan.name}
                 </h3>
-                <p className="mt-1 text-sm font-medium text-emerald-900">
+                <p className="mt-1 text-sm font-medium text-primary">
                   {plan.subtitle}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-stone-600">
@@ -234,7 +234,7 @@ export function FormativePlansSection() {
                               key={row.code}
                               className="border-b border-stone-100 last:border-0"
                             >
-                              <td className="px-3 py-3 font-mono text-xs font-semibold text-emerald-900 sm:px-4 sm:text-sm whitespace-nowrap">
+                              <td className="px-3 py-3 font-mono text-xs font-semibold text-primary sm:px-4 sm:text-sm whitespace-nowrap">
                                 {row.code}
                               </td>
                               <td className="px-3 py-3 font-medium text-stone-900 sm:px-4">
