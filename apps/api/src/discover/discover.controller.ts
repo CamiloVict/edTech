@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ProviderKind } from '@repo/database';
 
 import { Public } from '../auth/public.decorator';
@@ -17,5 +17,12 @@ export class DiscoverController {
         ? kind
         : undefined;
     return this.discover.listAvailable(normalized);
+  }
+
+  /** Perfil público del educador (página de ficha). */
+  @Public()
+  @Get('providers/:providerProfileId')
+  getOne(@Param('providerProfileId') providerProfileId: string) {
+    return this.discover.getPublicProfile(providerProfileId);
   }
 }

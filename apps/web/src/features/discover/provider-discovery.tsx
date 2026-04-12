@@ -1,12 +1,9 @@
 'use client';
 
-import { useAuth } from '@clerk/nextjs';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
-import { useBootstrapQuery } from '@/features/bootstrap/hooks/use-bootstrap';
 import { ProviderCard } from '@/features/discover/provider-card';
-import { ProviderDetailModal } from '@/features/discover/provider-detail-modal';
 import { publicApiRequest } from '@/shared/lib/api';
 import { Field, Select } from '@/shared/components/ui/field';
 
@@ -55,42 +52,8 @@ function mapDiscoverRow(row: DiscoverProviderApiRow): DiscoverProvider {
   };
 }
 
-function useDiscoverViewer() {
-  const { userId, isLoaded } = useAuth();
-  const bootstrapQuery = useBootstrapQuery({
-    enabled: Boolean(isLoaded && userId),
-  });
-
-  return useMemo(() => {
-    const boot = bootstrapQuery.data;
-    const isSignedIn = Boolean(userId);
-    const role = boot?.user.role ?? null;
-    const consumerComplete =
-      boot?.consumerProfile?.isProfileCompleted === true;
-    const canBook = role === 'CONSUMER' && consumerComplete;
-    const isProviderViewer = role === 'PROVIDER';
-
-    return {
-      isLoaded,
-      isSignedIn,
-      role,
-      canBook,
-      isProviderViewer,
-      bootstrapPending: Boolean(userId) && bootstrapQuery.isPending,
-      needsRoleSelection: boot?.needsRoleSelection === true,
-    };
-  }, [
-    userId,
-    isLoaded,
-    bootstrapQuery.data,
-    bootstrapQuery.isPending,
-  ]);
-}
-
 export function ProviderDiscovery() {
   const [kind, setKind] = useState<string>('');
-  const [selected, setSelected] = useState<DiscoverProvider | null>(null);
-  const viewer = useDiscoverViewer();
 
   const query = useQuery({
     queryKey: ['discover', 'providers', kind],
@@ -107,64 +70,6 @@ export function ProviderDiscovery() {
 
   const items = query.data ?? [];
   const empty = !query.isLoading && items.length === 0;
-
-  const cardCta = useMemo(() => {
-    if (!viewer.isLoaded || viewer.bootstrapPending) {
-      return {
-        primaryLabel: 'Ver ficha',
-        hint: 'Cargando…',
-      };
-    }
-    if (!viewer.isSignedIn) {
-      return {
-        primaryLabel: 'Ver ficha',
-        hint: 'Inicia sesión para ver tarifas y solicitar cita.',
-      };
-    }
-    if (viewer.isProviderViewer) {
-      return {
-        primaryLabel: 'Ver ficha',
-        hint: 'Vista de educador: revisa tarifas y ventanas de colegas.',
-      };
-    }
-    if (viewer.canBook) {
-      return {
-        primaryLabel: 'Ver ficha y tarifas',
-        hint: 'Podrás solicitar una cita si hay ventanas publicadas.',
-      };
-    }
-    if (viewer.role === 'CONSUMER') {
-      return {
-        primaryLabel: 'Ver ficha y tarifas',
-        hint: 'Completa tu perfil de familia para poder solicitar citas.',
-        secondaryLink: {
-          href: '/profile/consumer',
-          label: 'Completar perfil',
-        },
-      };
-    }
-    if (viewer.needsRoleSelection) {
-      return {
-        primaryLabel: 'Ver ficha',
-        hint: 'Elige perfil familia para ver tarifas y reservar con educadores.',
-        secondaryLink: { href: '/role', label: 'Elegir perfil' },
-      };
-    }
-    return {
-      primaryLabel: 'Ver ficha',
-      hint: 'Regístrate como familia para ver tarifas y solicitar citas.',
-      secondaryLink: { href: '/mi-espacio', label: 'Ir a mi espacio' },
-    };
-  }, [viewer]);
-
-  const modalViewer = useMemo(
-    () => ({
-      isSignedIn: viewer.isSignedIn,
-      canBook: viewer.canBook,
-      isProviderViewer: viewer.isProviderViewer,
-    }),
-    [viewer.isSignedIn, viewer.canBook, viewer.isProviderViewer],
-  );
 
   return (
     <div className="space-y-4">
@@ -197,22 +102,10 @@ export function ProviderDiscovery() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((p) => (
-            <ProviderCard
-              key={p.id}
-              provider={p}
-              cta={cardCta}
-              onViewDetails={() => setSelected(p)}
-            />
+            <ProviderCard key={p.id} provider={p} />
           ))}
         </div>
       )}
-
-      <ProviderDetailModal
-        open={selected !== null}
-        onClose={() => setSelected(null)}
-        summary={selected}
-        viewer={modalViewer}
-      />
     </div>
   );
 }

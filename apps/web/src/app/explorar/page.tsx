@@ -10,8 +10,8 @@ export default function ExplorarPage() {
           Educadores y cuidadores
         </h1>
         <p className="mt-2 text-sm text-stone-600 sm:text-base">
-          Explora perfiles públicos. Para ver tarifas y pedir cita, inicia sesión
-          y completa tu perfil de familia.
+          Abre una tarjeta para ver la ficha completa: trayectoria, calendario,
+          tarifas (con sesión) y reserva.
         </p>
         <div className="mt-8">
           <ProviderDiscovery />

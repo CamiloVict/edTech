@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   OnboardingStep,
   ProviderKind,
+  ProviderProfile,
   UserRole,
 } from '@repo/database';
 
@@ -41,7 +42,30 @@ export class DiscoverService {
       take: 48,
     });
 
-    return rows.map((p) => ({
+    return rows.map((p) => this.toRow(p));
+  }
+
+  /** Ficha pública ampliada (sin tarifas ni bloques de calendario). */
+  async getPublicProfile(providerProfileId: string): Promise<DiscoverProviderRow> {
+    const p = await this.prisma.providerProfile.findFirst({
+      where: {
+        id: providerProfileId,
+        isAvailable: true,
+        isProfileCompleted: true,
+        user: {
+          role: UserRole.PROVIDER,
+          onboardingStep: OnboardingStep.COMPLETED,
+        },
+      },
+    });
+    if (!p) {
+      throw new NotFoundException('Provider not found');
+    }
+    return this.toRow(p);
+  }
+
+  private toRow(p: ProviderProfile): DiscoverProviderRow {
+    return {
       id: p.id,
       fullName: p.fullName,
       bio: p.bio,
@@ -54,6 +78,6 @@ export class DiscoverService {
       yearsOfExperience: p.yearsOfExperience,
       focusAreas: p.focusAreas,
       serviceMode: p.serviceMode,
-    }));
+    };
   }
 }

@@ -118,8 +118,9 @@ export function HomeLanding() {
                 Educadores y cuidadores
               </h2>
               <p className="mt-1 text-sm text-stone-600 sm:text-base">
-                Explora perfiles públicos. Para ver tarifas y solicitar cita,
-                inicia sesión y completa tu perfil de familia.
+                Pulsa una tarjeta para abrir la ficha completa. Las tarifas y la
+                reserva están en el perfil (con sesión y perfil de familia
+                completo).
               </p>
             </div>
             <Link
