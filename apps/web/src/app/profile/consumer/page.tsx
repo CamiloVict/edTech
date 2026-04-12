@@ -179,7 +179,7 @@ export default function ConsumerProfilePage() {
     return (
       <div className="p-8 text-sm text-red-600">
         No se pudo cargar el perfil.{' '}
-        <Link href="/bootstrap" className="underline">
+        <Link href="/mi-espacio" className="underline">
           Reintentar
         </Link>
       </div>
@@ -187,23 +187,24 @@ export default function ConsumerProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-stone-50">
       <AppHeader
-        title="Mi perfil"
+        pageLabel="Mi perfil"
         links={[
-          { href: '/dashboard/consumer', label: 'Inicio' },
+          { href: '/dashboard/consumer', label: 'Mi panel', emphasized: true },
+          { href: '/explorar', label: 'Educadores' },
           { href: '/profile/consumer', label: 'Mi perfil' },
         ]}
       />
       <main className="mx-auto max-w-lg space-y-8 p-8">
         <div>
           <h1 className="text-2xl font-semibold">Editar perfil familiar</h1>
-          <p className="mt-2 text-sm text-zinc-600">
+          <p className="mt-2 text-sm text-stone-600">
             Actualiza tus datos y los de tus beneficiarios.
           </p>
         </div>
 
-        <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
+        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6">
           <Field label="Nombre completo">
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </Field>
@@ -221,9 +222,9 @@ export default function ConsumerProfilePage() {
           </Field>
         </section>
 
-        <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
+        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">
               Niños
             </h2>
             <Button
@@ -237,7 +238,7 @@ export default function ConsumerProfilePage() {
           {children.map((row) => (
             <div
               key={row.clientKey}
-              className="space-y-3 rounded-lg border border-zinc-100 p-4"
+              className="space-y-3 rounded-lg border border-stone-100 p-4"
             >
               <div className="flex justify-end">
                 <Button

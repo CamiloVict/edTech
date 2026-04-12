@@ -1,0 +1,34 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+
+import { syncUserWithToken } from '@/features/bootstrap/server-sync';
+import { pathAfterBootstrap } from '@/shared/lib/routing';
+
+/**
+ * Punto de entrada tras login: sincroniza con la API en el servidor y redirige
+ * al dashboard, onboarding o elección de rol (sin loader colgado en el cliente).
+ */
+export default async function MiEspacioPage() {
+  const a = await auth();
+  if (!a.userId) {
+    redirect('/sign-in');
+  }
+
+  const token = await a.getToken();
+  if (!token) {
+    redirect('/sign-in');
+  }
+
+  let data: Awaited<ReturnType<typeof syncUserWithToken>>;
+  try {
+    data = await syncUserWithToken(token);
+  } catch {
+    redirect('/sync-error');
+  }
+
+  if (!data?.bootstrap) {
+    redirect('/sync-error');
+  }
+
+  redirect(pathAfterBootstrap(data.bootstrap));
+}

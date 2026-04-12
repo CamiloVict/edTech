@@ -10,11 +10,12 @@ import {
   syncUser,
 } from '@/features/bootstrap/api/bootstrap-api';
 
-export function useBootstrapQuery() {
+export function useBootstrapQuery(options?: { enabled?: boolean }) {
   const { getToken } = useAuth();
   return useQuery({
     queryKey: bootstrapQueryKey,
     queryFn: () => fetchBootstrap(getToken),
+    enabled: options?.enabled ?? true,
   });
 }
 

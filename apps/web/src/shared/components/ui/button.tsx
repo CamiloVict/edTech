@@ -8,11 +8,22 @@ type ButtonProps = PropsWithChildren<
 
 const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
-    'bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50',
+    'bg-emerald-800 text-white shadow-sm hover:bg-emerald-900 disabled:opacity-50',
   secondary:
-    'bg-white text-zinc-900 border border-zinc-200 hover:bg-zinc-50 disabled:opacity-50',
-  ghost: 'text-zinc-700 hover:bg-zinc-100 disabled:opacity-50',
+    'border border-stone-200 bg-white text-stone-900 shadow-sm hover:bg-stone-50 disabled:opacity-50',
+  ghost:
+    'text-stone-700 hover:bg-stone-100 disabled:opacity-50',
 };
+
+const baseButtonClass =
+  'inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition';
+
+export function buttonStyles(
+  variant: NonNullable<ButtonProps['variant']> = 'primary',
+  className = '',
+) {
+  return `${baseButtonClass} ${variants[variant]} ${className}`.trim();
+}
 
 export function Button({
   variant = 'primary',
@@ -23,7 +34,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition ${variants[variant]} ${className}`}
+      className={buttonStyles(variant, className)}
       {...rest}
     >
       {children}

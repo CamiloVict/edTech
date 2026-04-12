@@ -16,12 +16,12 @@ export function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>{greeting}</Text>
         <Text style={styles.subtitle}>
-          App mobile · arquitectura por features · listo para consumidores y
-          proveedores
+          Explora educadores, gestiona tu perfil y mantente al día con Trofo
+          School desde el móvil.
         </Text>
       </View>
 
-      <Text style={styles.label}>Tipo de cuenta (preview MVP)</Text>
+      <Text style={styles.label}>Tipo de cuenta</Text>
       <View style={styles.row}>
         <RoleChip
           label="Familia"
@@ -29,7 +29,7 @@ export function HomeScreen() {
           onPress={() => setRole('consumer')}
         />
         <RoleChip
-          label="Proveedor"
+          label="Educador"
           active={role === 'provider'}
           onPress={() => setRole('provider')}
         />
@@ -66,14 +66,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#111',
+    color: '#1c1917',
     marginBottom: 8,
   },
-  subtitle: { fontSize: 15, lineHeight: 22, color: '#444' },
+  subtitle: { fontSize: 15, lineHeight: 22, color: '#57534e' },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#78716c',
     marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -86,12 +86,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#e7e5e4',
   },
   chipActive: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
+    borderColor: '#065f46',
+    backgroundColor: '#ecfdf5',
   },
-  chipText: { textAlign: 'center', fontSize: 16, color: '#333' },
-  chipTextActive: { color: '#1d4ed8', fontWeight: '600' },
+  chipText: { textAlign: 'center', fontSize: 16, color: '#44403c' },
+  chipTextActive: { color: '#065f46', fontWeight: '600' },
 });

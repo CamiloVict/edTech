@@ -11,6 +11,7 @@ export function syncUser(getToken: () => Promise<string | null>) {
   return apiRequest<SyncResponse>('/users/sync', {
     method: 'POST',
     getToken,
+    timeoutMs: 30_000,
   });
 }
 

@@ -1,14 +1,26 @@
 import { SignIn } from '@clerk/nextjs';
 
+import { AuthGateShell } from '@/shared/components/friendly-form-shell';
+import { clerkFriendlyAppearance } from '@/shared/lib/clerk-appearance';
+
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen items-start justify-center px-4 py-16">
+    <AuthGateShell
+      title="Entra con tranquilidad"
+      subtitle="Usa el correo con el que te registraste. Si algo no funciona, revisa que sea el mismo que en tu invitación o en el registro."
+      bullets={[
+        'Aquí verás tu perfil familiar y podrás actualizarlo cuando quieras.',
+        'Explora educadores y cuidadores desde la página principal sin iniciar sesión.',
+        'Muy pronto podrás elegir un plan educativo para tu familia desde tu cuenta.',
+      ]}
+    >
       <SignIn
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        fallbackRedirectUrl="/bootstrap"
+        fallbackRedirectUrl="/mi-espacio"
+        appearance={clerkFriendlyAppearance}
       />
-    </div>
+    </AuthGateShell>
   );
 }

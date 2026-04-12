@@ -24,8 +24,15 @@ export class UsersService {
   }
 
   private async resolveEmail(clerkUserId: string): Promise<string> {
+    const timeoutMs = 8_000;
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('clerk_get_user_timeout')), timeoutMs);
+    });
     try {
-      const user = await this.clerk().users.getUser(clerkUserId);
+      const user = await Promise.race([
+        this.clerk().users.getUser(clerkUserId),
+        timeout,
+      ]);
       const primaryId = user.primaryEmailAddressId;
       const addr =
         user.emailAddresses?.find((e) => e.id === primaryId) ??
@@ -34,7 +41,7 @@ export class UsersService {
         return addr.emailAddress;
       }
     } catch {
-      // Clerk unreachable: still allow placeholder for dev
+      // Clerk unreachable, timeout, or missing email: placeholder keeps sync fast
     }
     return `${clerkUserId}@users.clerk.placeholder`;
   }
@@ -44,13 +51,7 @@ export class UsersService {
       where: { clerkUserId },
     });
     if (existing) {
-      const email = await this.resolveEmail(clerkUserId);
-      if (email && email !== existing.email) {
-        return this.prisma.user.update({
-          where: { id: existing.id },
-          data: { email },
-        });
-      }
+      // No llamar a Clerk en cada sync: evita cuelgues y hace el bootstrap instantáneo.
       return existing;
     }
 

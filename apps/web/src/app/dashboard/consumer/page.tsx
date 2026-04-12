@@ -1,23 +1,75 @@
 'use client';
 
 import { useAuth, useUser } from '@clerk/nextjs';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
-import { fetchBootstrap } from '@/features/bootstrap/api/bootstrap-api';
+import {
+  listMyAppointments,
+  patchAppointment,
+  type AppointmentRow,
+} from '@/features/appointments/api/appointments-api';
+import {
+  bootstrapQueryKey,
+  fetchBootstrap,
+} from '@/features/bootstrap/api/bootstrap-api';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
 import { pathAfterBootstrap } from '@/shared/lib/routing';
 import { AppHeader } from '@/shared/components/app-header';
+import { Button } from '@/shared/components/ui/button';
+
+const terminalStatuses = new Set([
+  'DECLINED',
+  'CANCELLED_BY_FAMILY',
+  'CANCELLED_BY_PROVIDER',
+]);
+
+function statusConsumerLabel(s: AppointmentRow['status']) {
+  const map: Record<AppointmentRow['status'], string> = {
+    PENDING: 'Pendiente de confirmación',
+    CONFIRMED: 'Confirmada',
+    DECLINED: 'Rechazada',
+    CANCELLED_BY_FAMILY: 'Cancelada por ti',
+    CANCELLED_BY_PROVIDER: 'Cancelada por el educador',
+  };
+  return map[s];
+}
+
+function formatApptRange(isoStart: string, isoEnd: string) {
+  try {
+    const a = new Date(isoStart);
+    const b = new Date(isoEnd);
+    return `${a.toLocaleString('es', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })} – ${b.toLocaleTimeString('es', { timeStyle: 'short' })}`;
+  } catch {
+    return `${isoStart} – ${isoEnd}`;
+  }
+}
+
+function formatMemberSince(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('es', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export default function ConsumerDashboardPage() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const router = useRouter();
+  const qc = useQueryClient();
 
   const bootstrapQuery = useQuery({
-    queryKey: ['bootstrap'],
+    queryKey: bootstrapQueryKey,
     queryFn: () => fetchBootstrap(getToken),
   });
 
@@ -25,6 +77,20 @@ export default function ConsumerDashboardPage() {
     queryKey: ['consumer-profile'],
     queryFn: () => getConsumerProfile(getToken),
     enabled: bootstrapQuery.data?.user.role === 'CONSUMER',
+  });
+
+  const appointmentsQuery = useQuery({
+    queryKey: ['appointments', 'me'],
+    queryFn: () => listMyAppointments(getToken),
+    enabled: bootstrapQuery.data?.user.role === 'CONSUMER',
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: (id: string) =>
+      patchAppointment(getToken, id, { status: 'CANCELLED_BY_FAMILY' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['appointments', 'me'] });
+    },
   });
 
   useEffect(() => {
@@ -36,17 +102,38 @@ export default function ConsumerDashboardPage() {
     }
   }, [bootstrapQuery.data, router]);
 
-  if (bootstrapQuery.isLoading || profileQuery.isLoading) {
+  const displayName = useMemo(() => {
+    const p = profileQuery.data;
     return (
-      <div className="p-8 text-center text-sm text-zinc-600">Cargando…</div>
+      p?.fullName ||
+      user?.firstName ||
+      user?.primaryEmailAddress?.emailAddress ||
+      'familia'
+    );
+  }, [profileQuery.data, user]);
+
+  if (
+    bootstrapQuery.isLoading ||
+    profileQuery.isLoading ||
+    appointmentsQuery.isLoading
+  ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-stone-50 p-8 text-base text-stone-600">
+        Cargando tu espacio…
+      </div>
     );
   }
 
-  if (bootstrapQuery.isError || profileQuery.isError || !profileQuery.data) {
+  if (
+    bootstrapQuery.isError ||
+    profileQuery.isError ||
+    appointmentsQuery.isError ||
+    !profileQuery.data
+  ) {
     return (
-      <div className="p-8 text-sm text-red-600">
-        No se pudo cargar el tablero.{' '}
-        <Link href="/bootstrap" className="underline">
+      <div className="p-8 text-base text-red-700">
+        No se pudo cargar tu tablero.{' '}
+        <Link href="/mi-espacio" className="font-semibold underline">
           Reintentar
         </Link>
       </div>
@@ -54,75 +141,216 @@ export default function ConsumerDashboardPage() {
   }
 
   const profile = profileQuery.data;
-  const name =
-    profile.fullName ||
-    user?.firstName ||
-    user?.primaryEmailAddress?.emailAddress ||
-    'familia';
+  const bUser = bootstrapQuery.data?.user;
+  const email =
+    user?.primaryEmailAddress?.emailAddress ?? bUser?.email ?? '—';
+
+  const now = new Date();
+  const allAppts = appointmentsQuery.data ?? [];
+  const upcoming = allAppts.filter(
+    (a) =>
+      !terminalStatuses.has(a.status) && new Date(a.endsAt) >= now,
+  );
+  const history = allAppts.filter(
+    (a) => terminalStatuses.has(a.status) || new Date(a.endsAt) < now,
+  );
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-stone-50">
       <AppHeader
-        title="TrofoSchool"
+        pageLabel="Familia"
         links={[
-          { href: '/dashboard/consumer', label: 'Inicio' },
+          { href: '/dashboard/consumer', label: 'Mi panel', emphasized: true },
+          { href: '/explorar', label: 'Educadores' },
           { href: '/profile/consumer', label: 'Mi perfil' },
         ]}
       />
-      <main className="mx-auto max-w-3xl space-y-8 p-8">
-        <div>
-          <h1 className="text-2xl font-semibold">Hola, {name}</h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            Resumen de tu perfil familiar y beneficiarios.
-          </p>
-        </div>
-
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Tu perfil
-          </h2>
-          <dl className="mt-4 grid gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Ciudad</dt>
-              <dd>{profile.city ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Teléfono</dt>
-              <dd>{profile.phone ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Relación</dt>
-              <dd>{profile.relationshipToChild ?? '—'}</dd>
-            </div>
-          </dl>
+      <main className="mx-auto max-w-4xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-stone-900 sm:text-3xl">
+              Hola, {displayName}
+            </h1>
+            <p className="mt-1 text-sm text-stone-600">
+              Familia · un solo lugar para ver y editar todo
+            </p>
+          </div>
           <Link
             href="/profile/consumer"
-            className="mt-4 inline-block text-sm font-medium text-zinc-900 underline"
+            className="inline-flex shrink-0 items-center justify-center rounded-xl bg-emerald-800 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-emerald-900"
           >
-            Editar perfil
+            Editar perfil y preferencias
           </Link>
+        </header>
+
+        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+            <div>
+              <h2 className="text-base font-bold text-stone-900">
+                Cuenta y contacto
+              </h2>
+              <dl className="mt-3 space-y-2 text-sm sm:text-base">
+                <div className="flex justify-between gap-4 border-b border-stone-100 py-2">
+                  <dt className="text-stone-500">Correo</dt>
+                  <dd className="text-right font-medium text-stone-900">
+                    {email}
+                  </dd>
+                </div>
+                {bUser?.createdAt ? (
+                  <div className="flex justify-between gap-4 border-b border-stone-100 py-2">
+                    <dt className="text-stone-500">Desde</dt>
+                    <dd className="text-right text-stone-900">
+                      {formatMemberSince(bUser.createdAt)}
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-4 border-b border-stone-100 py-2">
+                  <dt className="text-stone-500">Ciudad</dt>
+                  <dd className="text-right text-stone-900">
+                    {profile.city ?? '—'}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 border-b border-stone-100 py-2">
+                  <dt className="text-stone-500">Teléfono</dt>
+                  <dd className="text-right text-stone-900">
+                    {profile.phone ?? '—'}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-stone-500">Relación</dt>
+                  <dd className="text-right text-stone-900">
+                    {profile.relationshipToChild ?? '—'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-stone-900">
+                Niños o niñas
+              </h2>
+              <ul className="mt-3 space-y-2">
+                {profile.children.length === 0 ? (
+                  <li className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-600">
+                    Sin registros aún — añádelos al editar perfil.
+                  </li>
+                ) : null}
+                {profile.children.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex justify-between gap-2 rounded-lg border border-stone-100 bg-stone-50/80 px-3 py-2 text-sm"
+                  >
+                    <span className="font-semibold text-stone-900">
+                      {c.firstName}
+                    </span>
+                    <span className="text-stone-600">
+                      {c.birthDate.slice(0, 10)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="mt-5 border-t border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-sm leading-snug text-amber-950">
+            <span className="font-semibold">Planes educativos:</span> próximamente
+            podrás seguir el plan que elijas con cada educador. Mientras tanto,
+            mantén el perfil actualizado con el botón de arriba.
+          </p>
         </section>
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Niños
+        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-bold text-stone-900">
+              Próximas citas
+            </h2>
+            <Link
+              href="/explorar"
+              className="text-sm font-semibold text-emerald-900 underline"
+            >
+              Buscar educadores
+            </Link>
+          </div>
+          {upcoming.length === 0 ? (
+            <p className="mt-3 text-sm text-stone-600">
+              No tienes citas activas. Explora educadores y solicita una dentro
+              de sus ventanas publicadas.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {upcoming.map((a) => (
+                <li
+                  key={a.id}
+                  className="rounded-xl border border-stone-100 bg-stone-50/80 px-4 py-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-medium text-emerald-900">
+                        Para {a.child?.firstName ?? '—'}
+                      </p>
+                      <p className="font-semibold text-stone-900">
+                        {a.providerProfile.fullName?.trim() || 'Educador'}
+                      </p>
+                      <p className="mt-1 text-stone-600">
+                        {formatApptRange(a.startsAt, a.endsAt)}
+                      </p>
+                      <p className="mt-1 text-xs text-stone-500">
+                        {statusConsumerLabel(a.status)}
+                      </p>
+                    </div>
+                    {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (
+                      <Button
+                        variant="secondary"
+                        className="shrink-0 text-xs"
+                        disabled={cancelMut.isPending}
+                        onClick={() => cancelMut.mutate(a.id)}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-base font-bold text-stone-900">
+            Historial de citas
           </h2>
-          <ul className="mt-4 space-y-3 text-sm">
-            {profile.children.length === 0 && (
-              <li className="text-zinc-500">Aún no hay niños registrados.</li>
-            )}
-            {profile.children.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-col rounded-lg border border-zinc-100 px-3 py-2"
-              >
-                <span className="font-medium">{c.firstName}</span>
-                <span className="text-zinc-500">
-                  Nacido/a el {c.birthDate.slice(0, 10)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {history.length === 0 ? (
+            <p className="mt-3 text-sm text-stone-600">
+              Aquí aparecerán citas pasadas o cerradas.
+            </p>
+          ) : (
+            <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto text-sm text-stone-600">
+              {history.map((a) => (
+                <li
+                  key={a.id}
+                  className="flex flex-wrap justify-between gap-2 border-b border-stone-100 py-2 last:border-0"
+                >
+                  <span className="font-medium text-stone-800">
+                    <span className="text-emerald-900">{a.child?.firstName ?? '—'}</span>
+                    {' · '}
+                    {a.providerProfile.fullName?.trim() || 'Educador'}
+                  </span>
+                  <span className="text-xs">
+                    {formatApptRange(a.startsAt, a.endsAt)} ·{' '}
+                    {statusConsumerLabel(a.status)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-dashed border-stone-300 bg-stone-50/50 p-5 sm:p-6">
+          <h2 className="text-base font-bold text-stone-900">
+            Notas del docente
+          </h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Próximamente verás aquí comentarios y seguimiento por hijo o por
+            servicio contratado.
+          </p>
         </section>
       </main>
     </div>

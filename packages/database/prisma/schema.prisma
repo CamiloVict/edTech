@@ -32,6 +32,20 @@ enum ProviderKind {
   BABYSITTER
 }
 
+enum RateUnit {
+  HOUR
+  SESSION
+  DAY
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  CANCELLED_BY_FAMILY
+  CANCELLED_BY_PROVIDER
+}
+
 model User {
   id              String          @id @default(cuid())
   clerkUserId     String          @unique @map("clerk_user_id")
@@ -59,6 +73,7 @@ model ConsumerProfile {
   isProfileCompleted    Boolean   @default(false) @map("is_profile_completed")
   onboardingCompletedAt DateTime? @map("onboarding_completed_at")
   children              Child[]
+  appointments          Appointment[]
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
@@ -89,8 +104,65 @@ model ProviderProfile {
   createdAt             DateTime     @default(now()) @map("created_at")
   updatedAt             DateTime     @updatedAt @map("updated_at")
 
+  rates                 ProviderRate[]
+  availabilityBlocks    ProviderAvailabilityBlock[]
+  appointments          Appointment[]
+
   @@index([isAvailable])
   @@map("provider_profiles")
+}
+
+model ProviderRate {
+  id                  String       @id @default(cuid())
+  providerProfileId   String       @map("provider_profile_id")
+  providerProfile     ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  label               String?
+  amountMinor         Int          @map("amount_minor")
+  currency            String       @default("EUR")
+  unit                RateUnit
+  sortOrder           Int          @default(0) @map("sort_order")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@index([providerProfileId])
+  @@map("provider_rates")
+}
+
+model ProviderAvailabilityBlock {
+  id                  String          @id @default(cuid())
+  providerProfileId   String          @map("provider_profile_id")
+  providerProfile     ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  startsAt            DateTime        @map("starts_at")
+  endsAt              DateTime        @map("ends_at")
+  isAllDay            Boolean         @default(false) @map("is_all_day")
+  /// Zona IANA para interpretar/mostrar bloques de día completo (p. ej. Europe/Madrid).
+  timezone            String          @default("UTC")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  @@index([providerProfileId, startsAt])
+  @@map("provider_availability_blocks")
+}
+
+model Appointment {
+  id                  String             @id @default(cuid())
+  providerProfileId   String             @map("provider_profile_id")
+  consumerProfileId   String             @map("consumer_profile_id")
+  providerProfile     ProviderProfile    @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  consumerProfile     ConsumerProfile    @relation(fields: [consumerProfileId], references: [id], onDelete: Cascade)
+  childId             String?            @map("child_id")
+  child               Child?             @relation(fields: [childId], references: [id], onDelete: SetNull)
+  startsAt            DateTime           @map("starts_at")
+  endsAt              DateTime           @map("ends_at")
+  status              AppointmentStatus
+  noteFromFamily      String?            @map("note_from_family")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  @@index([providerProfileId, startsAt])
+  @@index([consumerProfileId, startsAt])
+  @@index([status])
+  @@map("appointments")
 }
 
 model Child {
@@ -103,6 +175,8 @@ model Child {
   notes             String?
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  appointments      Appointment[]
 
   @@index([consumerProfileId])
   @@map("children")

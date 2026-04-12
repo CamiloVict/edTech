@@ -11,9 +11,15 @@ import {
   fetchBootstrap,
 } from '@/features/bootstrap/api/bootstrap-api';
 import {
+  createRate,
+  deleteRate,
+  listMyRates,
+} from '@/features/provider-rates/api/provider-rates-api';
+import {
   getProviderProfile,
   patchProviderProfile,
 } from '@/features/provider/api/provider-api';
+import type { RateUnit } from '@/features/providers/api/providers-api';
 import type { ProviderKind, ServiceMode } from '@/shared/types/bootstrap';
 import { AppHeader } from '@/shared/components/app-header';
 import { Button } from '@/shared/components/ui/button';
@@ -41,6 +47,12 @@ export default function ProviderProfilePage() {
     enabled: bootstrapQuery.data?.user.role === 'PROVIDER',
   });
 
+  const ratesQuery = useQuery({
+    queryKey: ['provider-rates', 'me'],
+    queryFn: () => listMyRates(getToken),
+    enabled: bootstrapQuery.data?.user.role === 'PROVIDER',
+  });
+
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [years, setYears] = useState<number | ''>('');
@@ -52,6 +64,11 @@ export default function ProviderProfilePage() {
   const [kindTeacher, setKindTeacher] = useState(true);
   const [kindBabysitter, setKindBabysitter] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
+
+  const [rateLabel, setRateLabel] = useState('');
+  const [rateAmount, setRateAmount] = useState('');
+  const [rateUnit, setRateUnit] = useState<RateUnit>('HOUR');
+  const [rateCurrency, setRateCurrency] = useState('EUR');
 
   useEffect(() => {
     const p = profileQuery.data;
@@ -119,6 +136,36 @@ export default function ProviderProfilePage() {
     },
   });
 
+  const addRate = useMutation({
+    mutationFn: async () => {
+      const n = Number(rateAmount.replace(',', '.'));
+      if (Number.isNaN(n) || n < 0) {
+        throw new Error('Importe no válido');
+      }
+      const amountMinor = Math.round(n * 100);
+      return createRate(getToken, {
+        label: rateLabel.trim() || undefined,
+        amountMinor,
+        currency: rateCurrency.trim().toUpperCase() || 'EUR',
+        unit: rateUnit,
+      });
+    },
+    onSuccess: async () => {
+      setRateLabel('');
+      setRateAmount('');
+      await qc.invalidateQueries({ queryKey: ['provider-rates', 'me'] });
+      await qc.invalidateQueries({ queryKey: ['provider-detail'] });
+    },
+  });
+
+  const removeRate = useMutation({
+    mutationFn: (id: string) => deleteRate(getToken, id),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['provider-rates', 'me'] });
+      await qc.invalidateQueries({ queryKey: ['provider-detail'] });
+    },
+  });
+
   const busy = useMemo(
     () =>
       save.isPending || profileQuery.isLoading || bootstrapQuery.isLoading,
@@ -129,7 +176,7 @@ export default function ProviderProfilePage() {
     return (
       <div className="p-8 text-sm text-red-600">
         No se pudo cargar el perfil.{' '}
-        <Link href="/bootstrap" className="underline">
+        <Link href="/mi-espacio" className="underline">
           Reintentar
         </Link>
       </div>
@@ -137,23 +184,24 @@ export default function ProviderProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-stone-50">
       <AppHeader
-        title="Mi perfil"
+        pageLabel="Mi perfil"
         links={[
-          { href: '/dashboard/provider', label: 'Inicio' },
+          { href: '/dashboard/provider', label: 'Mi panel', emphasized: true },
+          { href: '/explorar', label: 'Educadores' },
           { href: '/profile/provider', label: 'Mi perfil' },
         ]}
       />
       <main className="mx-auto max-w-lg space-y-8 p-8">
         <div>
           <h1 className="text-2xl font-semibold">Editar perfil profesional</h1>
-          <p className="mt-2 text-sm text-zinc-600">
+          <p className="mt-2 text-sm text-stone-600">
             Mantén tu información al día para generar confianza con las familias.
           </p>
         </div>
 
-        <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
+        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6">
           <Field label="Nombre completo">
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </Field>
@@ -207,7 +255,7 @@ export default function ProviderProfilePage() {
           />
         </Field>
         <div className="space-y-2">
-          <span className="text-sm font-medium text-zinc-700">
+          <span className="text-sm font-medium text-stone-700">
             ¿Qué ofreces?
           </span>
           <label className="flex items-center gap-2 text-sm">
@@ -235,12 +283,98 @@ export default function ProviderProfilePage() {
             Aparecer como disponible en el listado público
           </label>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-stone-500">
           Valoración mostrada:{' '}
           {(profileQuery.data?.averageRating ?? 0).toFixed(1)} (
           {profileQuery.data?.ratingCount ?? 0} valoraciones) — en el futuro
           vendrá de reseñas reales.
         </p>
+        </section>
+
+        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6">
+          <div>
+            <h2 className="text-lg font-semibold text-stone-900">Tarifas</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Solo usuarios con sesión ven estos importes al abrir tu ficha
+              desde el listado.
+            </p>
+          </div>
+          {ratesQuery.isLoading ? (
+            <p className="text-sm text-stone-500">Cargando tarifas…</p>
+          ) : (
+            <ul className="space-y-2">
+              {(ratesQuery.data ?? []).length === 0 ? (
+                <li className="text-sm text-stone-500">
+                  Aún no has añadido tarifas.
+                </li>
+              ) : null}
+              {(ratesQuery.data ?? []).map((r) => (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-stone-100 bg-stone-50 px-3 py-2 text-sm"
+                >
+                  <span>
+                    {r.label?.trim() || 'Servicio'} · {r.unit} ·{' '}
+                    {(r.amountMinor / 100).toFixed(2)} {r.currency}
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-red-700 underline"
+                    disabled={removeRate.isPending}
+                    onClick={() => removeRate.mutate(r.id)}
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Field label="Concepto (opcional)">
+            <Input
+              value={rateLabel}
+              onChange={(e) => setRateLabel(e.target.value)}
+              placeholder="Ej. Clase individual 1h"
+            />
+          </Field>
+          <Field label="Importe (ej. 25 o 25,50)">
+            <Input
+              value={rateAmount}
+              onChange={(e) => setRateAmount(e.target.value)}
+              inputMode="decimal"
+            />
+          </Field>
+          <Field label="Unidad">
+            <Select
+              value={rateUnit}
+              onChange={(e) => setRateUnit(e.target.value as RateUnit)}
+            >
+              <option value="HOUR">Por hora</option>
+              <option value="SESSION">Por sesión</option>
+              <option value="DAY">Por día</option>
+            </Select>
+          </Field>
+          <Field label="Moneda (ISO)">
+            <Input
+              value={rateCurrency}
+              onChange={(e) => setRateCurrency(e.target.value)}
+              maxLength={3}
+            />
+          </Field>
+          {addRate.isError ? (
+            <p className="text-sm text-red-600">
+              {addRate.error instanceof Error
+                ? addRate.error.message
+                : 'Error al añadir'}
+            </p>
+          ) : null}
+          <Button
+            variant="secondary"
+            className="w-full"
+            disabled={addRate.isPending || !rateAmount.trim()}
+            onClick={() => addRate.mutate()}
+          >
+            Añadir tarifa
+          </Button>
         </section>
 
         {save.isError && (

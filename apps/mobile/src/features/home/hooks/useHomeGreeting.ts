@@ -9,6 +9,6 @@ export function useHomeGreeting(displayName?: string) {
     if (displayName?.trim()) {
       return `Hola, ${displayName.trim()}`;
     }
-    return 'Bienvenido a TrofoSchool';
+    return 'Bienvenido a Trofo School';
   }, [displayName]);
 }

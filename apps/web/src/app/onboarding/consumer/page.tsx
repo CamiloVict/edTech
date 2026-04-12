@@ -17,6 +17,10 @@ import {
   postChild,
 } from '@/features/consumer/api/consumer-api';
 import { pathAfterBootstrap } from '@/shared/lib/routing';
+import {
+  FriendlyFormShell,
+  HelpCallout,
+} from '@/shared/components/friendly-form-shell';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input } from '@/shared/components/ui/field';
 import { apiRequest } from '@/shared/lib/api';
@@ -110,7 +114,9 @@ export default function ConsumerOnboardingPage() {
 
       for (const row of children) {
         if (!row.firstName.trim() || !row.birthDate) {
-          throw new Error('Cada niño necesita nombre y fecha de nacimiento.');
+          throw new Error(
+            'Cada niño o niña necesita un nombre y una fecha de nacimiento. Revisa el paso 2.',
+          );
         }
         if (!row.id) {
           await postChild(getToken, {
@@ -163,151 +169,186 @@ export default function ConsumerOnboardingPage() {
 
   if (profileQuery.isError || bootstrapQuery.isError) {
     return (
-      <div className="mx-auto max-w-lg p-8 text-sm text-red-600">
-        No se pudo cargar el onboarding.{' '}
-        <Link href="/bootstrap" className="underline">
-          Volver a sincronizar
+      <div className="mx-auto max-w-lg p-8 text-base text-red-700">
+        No pudimos cargar esta pantalla.{' '}
+        <Link href="/mi-espacio" className="font-semibold underline">
+          Intentar de nuevo
         </Link>
       </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-lg space-y-8 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Perfil familiar</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Completa tus datos y agrega al menos un niño o niña beneficiario.
-        </p>
-      </div>
+    <FriendlyFormShell
+      maxWidthClass="max-w-3xl"
+      title="Tu perfil familiar"
+      subtitle="Todo en una sola pantalla: tú y los niños o niñas. Puedes corregir datos después en Mi perfil."
+      footer={
+        <Button
+          className="w-full py-3.5 text-base"
+          disabled={busy}
+          onClick={() => submit.mutate()}
+        >
+          {busy ? 'Guardando…' : 'Guardar y continuar'}
+        </Button>
+      }
+    >
+      <HelpCallout title="Por qué pedimos esto" compact>
+        Ayuda a educadores y cuidadores a conocerte. Más adelante servirá para
+        planes y recomendaciones.
+      </HelpCallout>
 
-      <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Acudiente
+      <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+        <h2 className="text-base font-bold text-stone-900">
+          Tú (persona que usa la cuenta)
         </h2>
-        <Field label="Nombre completo">
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        </Field>
-        <Field label="Teléfono">
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </Field>
-        <Field label="Ciudad">
-          <Input value={city} onChange={(e) => setCity(e.target.value)} />
-        </Field>
-        <Field label="Relación con el niño/a">
-          <Input
-            value={relationship}
-            onChange={(e) => setRelationship(e.target.value)}
-            placeholder="Ej. Madre, padre, tutor"
-          />
-        </Field>
-      </section>
-
-      <section className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Niños
-          </h2>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setChildren((c) => [...c, newRow()])}
-          >
-            Añadir
-          </Button>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Field label="Nombre completo">
+              <Input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Cómo quieres que te llamen"
+              />
+            </Field>
+          </div>
+          <Field label="Teléfono (opcional)">
+            <Input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+57…"
+            />
+          </Field>
+          <Field label="Ciudad">
+            <Input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Ej. Bogotá"
+            />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Relación con el menor">
+              <Input
+                value={relationship}
+                onChange={(e) => setRelationship(e.target.value)}
+                placeholder="Mamá, papá, abuela…"
+              />
+            </Field>
+          </div>
         </div>
-        {children.map((row) => (
+
+        <div className="border-t border-stone-100 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-stone-900">
+              Niños o niñas (mínimo uno)
+            </h2>
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0 py-2.5"
+              onClick={() => setChildren((c) => [...c, newRow()])}
+            >
+              + Añadir
+            </Button>
+          </div>
+        </div>
+
+        {children.map((row, index) => (
           <div
             key={row.clientKey}
-            className="space-y-3 rounded-lg border border-zinc-100 p-4"
+            className="space-y-3 rounded-xl border border-stone-100 bg-stone-50/60 p-3 sm:p-4"
           >
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold text-stone-800">
+                #{index + 1}
+              </span>
               <Button
                 type="button"
                 variant="ghost"
-                className="text-red-600"
+                className="py-2 text-sm text-red-700 hover:bg-red-50"
                 disabled={busy}
                 onClick={() => removeChild.mutate(row)}
               >
                 Quitar
               </Button>
             </div>
-            <Field label="Nombre">
-              <Input
-                value={row.firstName}
-                onChange={(e) =>
-                  setChildren((prev) =>
-                    prev.map((r) =>
-                      r.clientKey === row.clientKey
-                        ? { ...r, firstName: e.target.value }
-                        : r,
-                    ),
-                  )
-                }
-              />
-            </Field>
-            <Field label="Fecha de nacimiento">
-              <Input
-                type="date"
-                value={row.birthDate}
-                onChange={(e) =>
-                  setChildren((prev) =>
-                    prev.map((r) =>
-                      r.clientKey === row.clientKey
-                        ? { ...r, birthDate: e.target.value }
-                        : r,
-                    ),
-                  )
-                }
-              />
-            </Field>
-            <Field label="Intereses (opcional)">
-              <Input
-                value={row.interests}
-                onChange={(e) =>
-                  setChildren((prev) =>
-                    prev.map((r) =>
-                      r.clientKey === row.clientKey
-                        ? { ...r, interests: e.target.value }
-                        : r,
-                    ),
-                  )
-                }
-              />
-            </Field>
-            <Field label="Notas (opcional)">
-              <Input
-                value={row.notes}
-                onChange={(e) =>
-                  setChildren((prev) =>
-                    prev.map((r) =>
-                      r.clientKey === row.clientKey
-                        ? { ...r, notes: e.target.value }
-                        : r,
-                    ),
-                  )
-                }
-              />
-            </Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Nombre">
+                <Input
+                  value={row.firstName}
+                  onChange={(e) =>
+                    setChildren((prev) =>
+                      prev.map((r) =>
+                        r.clientKey === row.clientKey
+                          ? { ...r, firstName: e.target.value }
+                          : r,
+                      ),
+                    )
+                  }
+                />
+              </Field>
+              <Field label="Nacimiento">
+                <Input
+                  type="date"
+                  value={row.birthDate}
+                  onChange={(e) =>
+                    setChildren((prev) =>
+                      prev.map((r) =>
+                        r.clientKey === row.clientKey
+                          ? { ...r, birthDate: e.target.value }
+                          : r,
+                      ),
+                    )
+                  }
+                />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Intereses (opcional)">
+                  <Input
+                    value={row.interests}
+                    onChange={(e) =>
+                      setChildren((prev) =>
+                        prev.map((r) =>
+                          r.clientKey === row.clientKey
+                            ? { ...r, interests: e.target.value }
+                            : r,
+                        ),
+                      )
+                    }
+                    placeholder="Música, deporte…"
+                  />
+                </Field>
+              </div>
+              <div className="sm:col-span-2">
+                <Field label="Notas (opcional)">
+                  <Input
+                    value={row.notes}
+                    onChange={(e) =>
+                      setChildren((prev) =>
+                        prev.map((r) =>
+                          r.clientKey === row.clientKey
+                            ? { ...r, notes: e.target.value }
+                            : r,
+                        ),
+                      )
+                    }
+                    placeholder="Alergias, horarios…"
+                  />
+                </Field>
+              </div>
+            </div>
           </div>
         ))}
       </section>
 
-      {submit.isError && (
-        <p className="text-sm text-red-600">
+      {submit.isError ? (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
           {submit.error instanceof Error
             ? submit.error.message
-            : 'Error al guardar'}
+            : 'No se pudo guardar. Revisa la conexión.'}
         </p>
-      )}
-
-      <Button
-        className="w-full py-3"
-        disabled={busy}
-        onClick={() => submit.mutate()}
-      >
-        Guardar y continuar
-      </Button>
-    </main>
+      ) : null}
+    </FriendlyFormShell>
   );
 }

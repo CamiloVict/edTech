@@ -17,8 +17,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'TrofoSchool',
-  description: 'Plataforma de educación de primera infancia',
+  title: {
+    default: 'Trofo School — Educadores y cuidadores para tu familia',
+    template: '%s · Trofo School',
+  },
+  description:
+    'Conecta con educadores y cuidadores de confianza para la primera infancia. Perfiles verificados, valoraciones y disponibilidad clara.',
+  keywords: [
+    'primera infancia',
+    'educación infantil',
+    'babysitter',
+    'cuidado infantil',
+    'familias',
+    'educadores',
+  ],
 };
 
 export default function RootLayout({
@@ -28,13 +40,13 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider
-      signInFallbackRedirectUrl="/bootstrap"
-      signUpFallbackRedirectUrl="/bootstrap"
+      signInFallbackRedirectUrl="/mi-espacio"
+      signUpFallbackRedirectUrl="/mi-espacio"
       afterSignOutUrl="/"
     >
       <html lang="es">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} bg-zinc-50 text-zinc-900 antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-stone-50 font-sans text-stone-900 antialiased`}
         >
           <QueryProvider>{children}</QueryProvider>
         </body>
