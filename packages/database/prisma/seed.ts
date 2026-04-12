@@ -114,9 +114,20 @@ async function clearDb() {
 }
 
 /**
- * Datos de prueba locales. Los `clerkUserId` son ficticios (no coinciden con Clerk real).
+ * Datos de prueba / demo. Los `clerkUserId` son ficticios (no coinciden con cuentas Clerk reales).
+ *
+ * En producción solo se vacía la DB si ALLOW_SEED_RESET=true (irreversible).
  */
 async function main() {
+  const destructiveOk =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ALLOW_SEED_RESET === 'true';
+  if (!destructiveOk) {
+    throw new Error(
+      'Seed en NODE_ENV=production sin ALLOW_SEED_RESET=true: no se ejecuta para no borrar datos. ' +
+        'Si quieres reemplazar todo el contenido de la DB de prod, exporta ALLOW_SEED_RESET=true (una sola vez, con cuidado).',
+    );
+  }
   await clearDb();
 
   const now = new Date();
