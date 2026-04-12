@@ -10,6 +10,7 @@ import {
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { consumerHubHref } from '@/features/consumer/lib/consumer-hub';
 import { PlannerRoadmap } from '@/features/educational-planner/planner-roadmap';
 import { usePlannerStore } from '@/features/educational-planner/planner-store';
 import { PLANNER_DEMO_CHILDREN } from '@/features/educational-planner/mock-profiles';
@@ -93,10 +94,10 @@ export function PlannerScreen() {
       <AppHeader
         pageLabel="Planner"
         links={[
-          { href: '/dashboard/consumer', label: 'Mi panel' },
+          { href: consumerHubHref('resumen'), label: 'Mi espacio' },
           { href: '/planner', label: 'Planner', emphasized: true },
           { href: '/explorar', label: 'Educadores' },
-          { href: '/profile/consumer', label: 'Mi perfil' },
+          { href: consumerHubHref('familia'), label: 'Familia y datos' },
         ]}
       />
 
@@ -455,7 +456,7 @@ export function PlannerScreen() {
                   </p>
                 </div>
                 <Link
-                  href="/dashboard/consumer"
+                  href={consumerHubHref('resumen')}
                   className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
                 >
                   Volver al panel familia

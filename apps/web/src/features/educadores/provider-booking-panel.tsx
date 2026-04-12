@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { createAppointment } from '@/features/appointments/api/appointments-api';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
+import { consumerHubHref } from '@/features/consumer/lib/consumer-hub';
 import type { ProviderDetailResponse } from '@/features/providers/api/providers-api';
 import { AvailabilityFullCalendar } from '@/features/scheduling/components/availability-full-calendar';
 import { ApiError } from '@/shared/lib/api';
@@ -426,10 +427,10 @@ export function ProviderBookingPanel({
             beneficiario.
           </p>
           <Link
-            href="/profile/consumer"
+            href={consumerHubHref('familia')}
             className="mt-3 inline-block font-semibold text-primary underline"
           >
-            Ir a mi perfil
+            Ir a datos de la familia
           </Link>
         </div>
       ) : null}

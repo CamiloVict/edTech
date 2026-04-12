@@ -4,6 +4,7 @@ import { UserButton, useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 
 import { useBootstrapQuery } from '@/features/bootstrap/hooks/use-bootstrap';
+import { consumerHubHref } from '@/features/consumer/lib/consumer-hub';
 import { SiteLogo } from '@/shared/components/site-logo';
 import {
   siteHeaderBarClass,
@@ -81,13 +82,16 @@ export function PublicSiteHeader() {
               ) : boot?.user.role === 'CONSUMER' ? (
                 <>
                   <Link
-                    href="/dashboard/consumer"
+                    href={consumerHubHref('resumen')}
                     className={siteHeaderNavLinkEmphasisClass}
                   >
-                    Mi panel
+                    Mi espacio
                   </Link>
-                  <Link href="/profile/consumer" className={siteHeaderNavLinkClass}>
-                    Mi perfil
+                  <Link
+                    href={consumerHubHref('familia')}
+                    className={siteHeaderNavLinkClass}
+                  >
+                    Familia y datos
                   </Link>
                 </>
               ) : boot?.user.role === 'PROVIDER' ? (
