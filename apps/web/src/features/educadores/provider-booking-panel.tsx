@@ -4,11 +4,12 @@ import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { createAppointment } from '@/features/appointments/api/appointments-api';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
 import type { ProviderDetailResponse } from '@/features/providers/api/providers-api';
+import { AvailabilityFullCalendar } from '@/features/scheduling/components/availability-full-calendar';
 import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
@@ -35,6 +36,57 @@ function formatMoney(amountMinor: number, currency: string) {
   } catch {
     return `${(amountMinor / 100).toFixed(2)} ${currency}`;
   }
+}
+
+function toDatetimeLocalValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
+
+function parseDatetimeLocal(s: string): Date | null {
+  if (!s.trim()) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function addMinutesToDatetimeLocal(startLocal: string, minutes: number): string {
+  const d = parseDatetimeLocal(startLocal);
+  if (!d) return '';
+  d.setMinutes(d.getMinutes() + minutes);
+  return toDatetimeLocalValue(d);
+}
+
+function formatSlotSummary(startsLocal: string, endsLocal: string): string | null {
+  const a = parseDatetimeLocal(startsLocal);
+  const b = parseDatetimeLocal(endsLocal);
+  if (!a || !b || b <= a) return null;
+  const sameDay = a.toDateString() === b.toDateString();
+  const d1 = a.toLocaleDateString('es', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const t1 = a.toLocaleTimeString('es', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const t2 = b.toLocaleTimeString('es', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  if (sameDay) {
+    return `${d1}, ${t1} – ${t2}`;
+  }
+  const d2 = b.toLocaleDateString('es', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  return `${d1} ${t1} → ${d2} ${t2}`;
 }
 
 export function ProviderBookingPanel({
@@ -65,6 +117,8 @@ export function ProviderBookingPanel({
   const [note, setNote] = useState('');
   const [childId, setChildId] = useState('');
 
+  const availabilityBlocks = detail?.availabilityBlocks ?? [];
+
   useEffect(() => {
     setStartsLocal('');
     setEndsLocal('');
@@ -81,10 +135,32 @@ export function ProviderBookingPanel({
     }
   }, [viewer.canBook, consumerQuery.data?.children]);
 
+  const onBookingSlotSelected = useCallback(
+    ({ startsAt, endsAt }: { startsAt: string; endsAt: string }) => {
+      const start = new Date(startsAt);
+      const end = new Date(endsAt);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+      setStartsLocal(toDatetimeLocalValue(start));
+      setEndsLocal(toDatetimeLocalValue(end));
+    },
+    [],
+  );
+
+  const applyDurationMins = (mins: number) => {
+    if (!startsLocal.trim()) return;
+    const nextEnd = addMinutesToDatetimeLocal(startsLocal, mins);
+    if (nextEnd) setEndsLocal(nextEnd);
+  };
+
+  const slotSummary = useMemo(
+    () => formatSlotSummary(startsLocal, endsLocal),
+    [startsLocal, endsLocal],
+  );
+
   const createMut = useMutation({
     mutationFn: () => {
       if (!childId.trim()) {
-        throw new Error('Elige para qué hijo o hija es la cita.');
+        throw new Error('Elige para qué hijo o hija es la clase.');
       }
       const startsAt = new Date(startsLocal).toISOString();
       const endsAt = new Date(endsLocal).toISOString();
@@ -111,11 +187,11 @@ export function ProviderBookingPanel({
 
   if (!viewer.isSignedIn) {
     return (
-      <div className="rounded-2xl border border-amber-100/90 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-amber-100/90 bg-linear-to-br from-amber-50 to-white p-5 shadow-sm">
         <h3 className="text-sm font-bold text-stone-900">Tarifas y reservas</h3>
         <p className="mt-2 text-sm leading-relaxed text-stone-600">
           Inicia sesión para ver las tarifas de este educador, su disponibilidad
-          detallada y solicitar una cita.
+          detallada y solicitar una clase.
         </p>
         <Link
           href="/sign-in"
@@ -180,16 +256,60 @@ export function ProviderBookingPanel({
       ) : null}
 
       {viewer.canBook ? (
-        <div className="rounded-2xl border border-emerald-200/60 bg-gradient-to-b from-emerald-50/40 to-white p-5 shadow-sm sm:p-6">
-          <h3 className="text-sm font-bold text-stone-900">Solicitar cita</h3>
-          <p className="mt-1 text-xs leading-relaxed text-stone-600">
-            El horario debe caer dentro de una ventana del calendario. Indica para
-            qué hijo o hija es el servicio.
+        <div className="rounded-2xl border border-emerald-200/60 bg-linear-to-b from-emerald-50/50 to-white p-5 shadow-sm sm:p-6">
+          <h3 className="text-base font-bold text-stone-900">Agendar clase</h3>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            Elige un hueco dentro del horario publicado por el educador. En{' '}
+            <span className="font-semibold">Semana</span> o{' '}
+            <span className="font-semibold">Día</span> verás las horas libres
+            (banda verde) y podrás arrastrar el intervalo de la clase, como en
+            el calendario del iPhone.
           </p>
-          <div className="mt-4 space-y-3">
+          <p className="mt-2 text-xs text-stone-500">
+            En <span className="font-medium">Mes</span> o{' '}
+            <span className="font-medium">Lista</span> solo consultas; para
+            elegir hora, cambia a Semana o Día.
+          </p>
+
+          {availabilityBlocks.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+              Este educador no tiene franjas futuras publicadas. No es posible
+              agendar hasta que añada disponibilidad.
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-stone-600">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-2.5 py-1">
+                  <span
+                    className="h-2.5 w-2.5 rounded-sm bg-emerald-500/35 ring-1 ring-emerald-600/30"
+                    aria-hidden
+                  />
+                  Horas en las que acepta clases
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-2.5 py-1">
+                  <span
+                    className="h-2.5 w-3 rounded-sm bg-emerald-600/35 ring-1 ring-emerald-700/40"
+                    aria-hidden
+                  />
+                  Tu selección
+                </span>
+              </div>
+              <div className="mt-3 overflow-hidden rounded-xl border border-stone-200 bg-white p-1.5 shadow-sm sm:p-2">
+                <AvailabilityFullCalendar
+                  blocks={availabilityBlocks}
+                  bookingSelect
+                  height={540}
+                  initialView="timeGridWeek"
+                  onBookingSlotSelected={onBookingSlotSelected}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="mt-5 space-y-3">
             {consumerQuery.data && consumerQuery.data.children.length > 0 ? (
               <Field
-                label="¿Para quién es la cita?"
+                label="¿Para quién es la clase?"
                 hint="El educador verá este dato en su agenda."
               >
                 <Select
@@ -210,20 +330,64 @@ export function ProviderBookingPanel({
                 Añade al menos un hijo o hija en tu perfil para reservar.
               </p>
             ) : null}
-            <Field label="Inicio">
-              <Input
-                type="datetime-local"
-                value={startsLocal}
-                onChange={(e) => setStartsLocal(e.target.value)}
-              />
-            </Field>
-            <Field label="Fin">
-              <Input
-                type="datetime-local"
-                value={endsLocal}
-                onChange={(e) => setEndsLocal(e.target.value)}
-              />
-            </Field>
+
+            {slotSummary ? (
+              <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-900">
+                  Horario elegido
+                </p>
+                <p className="mt-0.5 text-sm font-semibold capitalize text-stone-900">
+                  {slotSummary}
+                </p>
+              </div>
+            ) : null}
+
+            <div>
+              <p className="text-xs font-semibold text-stone-700">
+                Duración rápida (desde la hora de inicio)
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  { label: '45 min', m: 45 },
+                  { label: '1 h', m: 60 },
+                  { label: '1 h 30', m: 90 },
+                  { label: '2 h', m: 120 },
+                ].map(({ label, m }) => (
+                  <button
+                    key={m}
+                    type="button"
+                    disabled={!startsLocal.trim()}
+                    onClick={() => applyDurationMins(m)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-800 shadow-sm transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <details className="rounded-xl border border-stone-100 bg-stone-50/80 px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-semibold text-stone-800">
+                Ajuste fino (inicio y fin manual)
+              </summary>
+              <div className="mt-3 space-y-3 pb-1">
+                <Field label="Inicio">
+                  <Input
+                    type="datetime-local"
+                    value={startsLocal}
+                    onChange={(e) => setStartsLocal(e.target.value)}
+                  />
+                </Field>
+                <Field label="Fin">
+                  <Input
+                    type="datetime-local"
+                    value={endsLocal}
+                    onChange={(e) => setEndsLocal(e.target.value)}
+                  />
+                </Field>
+              </div>
+            </details>
+
             <Field label="Nota para el educador (opcional)">
               <TextArea
                 value={note}
@@ -243,11 +407,12 @@ export function ProviderBookingPanel({
                 !startsLocal ||
                 !endsLocal ||
                 !childId.trim() ||
-                !consumerQuery.data?.children.length
+                !consumerQuery.data?.children.length ||
+                availabilityBlocks.length === 0
               }
               onClick={() => createMut.mutate()}
             >
-              {createMut.isPending ? 'Enviando…' : 'Enviar solicitud'}
+              {createMut.isPending ? 'Enviando…' : 'Enviar solicitud de clase'}
             </Button>
           </div>
         </div>
@@ -255,7 +420,7 @@ export function ProviderBookingPanel({
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-5 text-sm text-emerald-950">
           <p className="font-semibold">Completa tu perfil de familia</p>
           <p className="mt-1 text-emerald-900/90">
-            Para solicitar citas necesitamos datos completos y al menos un
+            Para solicitar clases necesitamos datos completos y al menos un
             beneficiario.
           </p>
           <Link

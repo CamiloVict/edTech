@@ -9,6 +9,7 @@ import {
   deleteAvailabilityBlock,
   listMyAvailabilityBlocks,
 } from '@/features/availability/api/availability-api';
+import { AvailabilityFullCalendar } from '@/features/scheduling/components/availability-full-calendar';
 import {
   listProviderAppointments,
   patchAppointment,
@@ -60,11 +61,15 @@ export function ProviderSchedulingSection() {
   );
 
   const createBlockMut = useMutation({
-    mutationFn: () =>
+    mutationFn: (vars: {
+      startsAt: string;
+      endsAt: string;
+      isAllDay: boolean;
+    }) =>
       createAvailabilityBlock(getToken, {
-        startsAt: new Date(startsLocal).toISOString(),
-        endsAt: new Date(endsLocal).toISOString(),
-        isAllDay,
+        startsAt: vars.startsAt,
+        endsAt: vars.endsAt,
+        isAllDay: vars.isAllDay,
         timezone: timezone.trim() || 'UTC',
       }),
     onSuccess: () => {
@@ -118,6 +123,44 @@ export function ProviderSchedulingSection() {
           Crea bloques en los que las familias pueden pedir cita (incluye días
           completos para babysitting si lo necesitas).
         </p>
+        <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-950 sm:text-sm">
+          <p className="font-semibold">Calendario</p>
+          <p className="mt-1 text-emerald-900/90">
+            En <span className="font-medium">Mes</span>,{' '}
+            <span className="font-medium">Semana</span> o{' '}
+            <span className="font-medium">Día</span>, arrastra para marcar una
+            ventana. Las familias la verán en verde. Pulsa un bloque existente
+            para eliminarlo.
+          </p>
+        </div>
+        {blocksQuery.isLoading ? (
+          <p className="mt-4 text-sm text-stone-500">Cargando calendario…</p>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white p-2 shadow-sm sm:p-3">
+            <AvailabilityFullCalendar
+              blocks={blocksQuery.data ?? []}
+              editable
+              height={560}
+              initialView="timeGridWeek"
+              onCreateRange={(range) => createBlockMut.mutate(range)}
+              onDeleteBlock={(id) => deleteBlockMut.mutate(id)}
+            />
+          </div>
+        )}
+        {createBlockMut.isError ? (
+          <p className="mt-2 text-sm text-red-700">
+            {createBlockMut.error instanceof Error
+              ? createBlockMut.error.message
+              : 'No se pudo crear el bloque'}
+          </p>
+        ) : null}
+        <h3 className="mt-6 text-sm font-bold text-stone-800">
+          Añadir con fecha y hora manual
+        </h3>
+        <p className="mt-1 text-xs text-stone-500">
+          Alternativa al arrastre: indica inicio y fin exactos (la zona horaria
+          aplica también a los bloques creados desde el calendario).
+        </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Inicio">
             <Input
@@ -149,30 +192,27 @@ export function ProviderSchedulingSection() {
             placeholder="Europe/Madrid"
           />
         </Field>
-        {createBlockMut.isError ? (
-          <p className="mt-2 text-sm text-red-700">
-            {createBlockMut.error instanceof Error
-              ? createBlockMut.error.message
-              : 'No se pudo crear el bloque'}
-          </p>
-        ) : null}
         <Button
           className="mt-3"
           variant="primary"
           disabled={
             createBlockMut.isPending || !startsLocal || !endsLocal
           }
-          onClick={() => createBlockMut.mutate()}
+          onClick={() =>
+            createBlockMut.mutate({
+              startsAt: new Date(startsLocal).toISOString(),
+              endsAt: new Date(endsLocal).toISOString(),
+              isAllDay,
+            })
+          }
         >
           {createBlockMut.isPending ? 'Guardando…' : 'Añadir ventana'}
         </Button>
 
         <h3 className="mt-6 text-sm font-bold text-stone-800">
-          Ventanas guardadas
+          Ventanas guardadas (lista)
         </h3>
-        {blocksQuery.isLoading ? (
-          <p className="mt-2 text-sm text-stone-500">Cargando…</p>
-        ) : (blocksQuery.data ?? []).length === 0 ? (
+        {(blocksQuery.data ?? []).length === 0 ? (
           <p className="mt-2 text-sm text-stone-600">
             Aún no hay ventanas. Las familias solo pueden solicitar citas dentro
             de estos rangos.

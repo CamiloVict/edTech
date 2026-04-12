@@ -10,6 +10,12 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.12",
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/daygrid": "^6.1.20",
+    "@fullcalendar/interaction": "^6.1.20",
+    "@fullcalendar/list": "^6.1.20",
+    "@fullcalendar/react": "^6.1.20",
+    "@fullcalendar/timegrid": "^6.1.20",
     "@tanstack/react-query": "^5.66.0",
     "next": "15.2.8",
     "react": "19.1.0",
