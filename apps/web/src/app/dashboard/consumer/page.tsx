@@ -161,6 +161,7 @@ export default function ConsumerDashboardPage() {
         pageLabel="Familia"
         links={[
           { href: '/dashboard/consumer', label: 'Mi panel', emphasized: true },
+          { href: '/planner', label: 'Planner educativo' },
           { href: '/explorar', label: 'Educadores' },
           { href: '/profile/consumer', label: 'Mi perfil' },
         ]}
@@ -250,10 +251,18 @@ export default function ConsumerDashboardPage() {
               </ul>
             </div>
           </div>
-          <p className="mt-5 border-t border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-sm leading-snug text-amber-950">
-            <span className="font-semibold">Planes educativos:</span> próximamente
-            podrás seguir el plan que elijas con cada educador. Mientras tanto,
-            mantén el perfil actualizado con el botón de arriba.
+          <p className="mt-5 border-t border-primary/15 bg-muted/60 px-3 py-2.5 text-sm leading-snug text-foreground">
+            <span className="font-semibold text-primary">Educational Planner:</span>{' '}
+            roadmap por edad y categoría, con fundamento pedagógico y edición
+            local.{' '}
+            <Link
+              href="/planner"
+              className="font-semibold text-primary underline underline-offset-2 hover:text-primary-hover"
+            >
+              Abrir planner
+            </Link>
+            . Para citas con educadores, mantén el perfil actualizado con el
+            botón de arriba.
           </p>
         </section>
 
