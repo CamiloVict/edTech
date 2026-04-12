@@ -2,7 +2,7 @@
   "name": "@repo/database",
   "version": "0.0.0",
   "private": true,
-  "main": "./src/index.ts",
+  "main": "./index.js",
   "types": "./src/index.ts",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -17,10 +17,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^6.3.1"
+    "@prisma/client": "^6.3.1",
+    "prisma": "^6.3.1"
   },
   "devDependencies": {
-    "prisma": "^6.3.1",
     "tsx": "^4.19.2",
     "typescript": "^5.4.3"
   }
