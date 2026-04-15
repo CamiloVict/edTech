@@ -24,7 +24,7 @@ export async function syncUserWithToken(token: string): Promise<SyncResponse> {
     const text = await res.text();
     if (!res.ok) {
       throw new Error(
-        typeof text === 'string' && text.length < 200
+        typeof text === 'string' && text.length < 500
           ? text
           : `Error ${res.status}`,
       );
