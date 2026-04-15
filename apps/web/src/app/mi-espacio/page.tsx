@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 
 import { syncUserWithToken } from '@/features/bootstrap/server-sync';
-import { pathAfterBootstrap } from '@/shared/lib/routing';
+import { landingPathAfterBootstrap } from '@/shared/lib/routing';
 
 /**
  * Punto de entrada tras login: sincroniza con la API en el servidor y redirige
@@ -30,5 +30,5 @@ export default async function MiEspacioPage() {
     redirect('/sync-error');
   }
 
-  redirect(pathAfterBootstrap(data.bootstrap));
+  redirect(landingPathAfterBootstrap(data.bootstrap));
 }

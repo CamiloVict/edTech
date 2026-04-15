@@ -144,6 +144,7 @@ export function ConsumerFamilyForm() {
       setChildren((prev) => prev.filter((r) => r.clientKey !== row.clientKey));
       if (row.id) {
         await qc.invalidateQueries({ queryKey: ['consumer-profile'] });
+        await qc.invalidateQueries({ queryKey: bootstrapQueryKey });
       }
     },
   });

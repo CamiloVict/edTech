@@ -24,10 +24,29 @@ export function PublicSiteHeader() {
   const boot = bootstrapQuery.data;
   const navLoading = isSignedIn && (bootstrapQuery.isFetching || bootstrapQuery.isPending);
 
+  const logoHref =
+    isLoaded &&
+    isSignedIn &&
+    boot &&
+    !navLoading &&
+    !bootstrapQuery.isError
+      ? boot.needsRoleSelection
+        ? '/role'
+        : boot.needsOnboarding && boot.user.role
+          ? boot.user.role === 'CONSUMER'
+            ? '/onboarding/consumer'
+            : '/onboarding/provider'
+          : boot.user.role === 'CONSUMER'
+            ? '/explorar'
+            : boot.user.role === 'PROVIDER'
+              ? '/dashboard/provider'
+              : '/'
+      : '/';
+
   return (
     <header className={siteHeaderBarClass}>
       <div className={siteHeaderInnerClass}>
-        <SiteLogo href="/" />
+        <SiteLogo href={logoHref} />
         <nav className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           {!isLoaded ? (
             <span className="h-9 w-20 animate-pulse rounded-lg bg-muted" />

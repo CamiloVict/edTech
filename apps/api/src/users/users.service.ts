@@ -135,8 +135,19 @@ export class UsersService {
     }>,
   ) {
     const needsRoleSelection = user.role === null;
+    const childCount = user.consumerProfile?.children?.length ?? 0;
+    const consumerNeedsOnboarding =
+      user.role === UserRole.CONSUMER && childCount < 1;
+    const providerNeedsOnboarding =
+      user.role === UserRole.PROVIDER &&
+      user.onboardingStep !== OnboardingStep.COMPLETED;
     const needsOnboarding =
-      user.role !== null && user.onboardingStep !== OnboardingStep.COMPLETED;
+      user.role !== null &&
+      (user.role === UserRole.CONSUMER
+        ? consumerNeedsOnboarding
+        : user.role === UserRole.PROVIDER
+          ? providerNeedsOnboarding
+          : user.onboardingStep !== OnboardingStep.COMPLETED);
 
     return {
       user: {

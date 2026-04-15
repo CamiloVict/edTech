@@ -16,7 +16,7 @@ import {
   patchConsumerProfile,
   postChild,
 } from '@/features/consumer/api/consumer-api';
-import { pathAfterBootstrap } from '@/shared/lib/routing';
+import { landingPathAfterBootstrap } from '@/shared/lib/routing';
 import {
   FriendlyFormShell,
   HelpCallout,
@@ -99,7 +99,7 @@ export default function ConsumerOnboardingPage() {
       return;
     }
     if (!bootstrap.needsOnboarding) {
-      router.replace('/dashboard/consumer');
+      router.replace(landingPathAfterBootstrap(bootstrap));
     }
   }, [bootstrap, router]);
 
@@ -134,7 +134,7 @@ export default function ConsumerOnboardingPage() {
     onSuccess: async (b) => {
       qc.setQueryData(bootstrapQueryKey, b);
       await qc.invalidateQueries({ queryKey: ['consumer-profile'] });
-      router.replace(pathAfterBootstrap(b));
+      router.replace(landingPathAfterBootstrap(b));
     },
   });
 

@@ -16,7 +16,7 @@ import {
   patchProviderProfile,
 } from '@/features/provider/api/provider-api';
 import type { ProviderKind, ServiceMode } from '@/shared/types/bootstrap';
-import { pathAfterBootstrap } from '@/shared/lib/routing';
+import { landingPathAfterBootstrap } from '@/shared/lib/routing';
 import {
   FriendlyFormShell,
   HelpCallout,
@@ -84,7 +84,7 @@ export default function ProviderOnboardingPage() {
       return;
     }
     if (!bootstrap.needsOnboarding) {
-      router.replace('/dashboard/provider');
+      router.replace(landingPathAfterBootstrap(bootstrap));
     }
   }, [bootstrap, router]);
 
@@ -124,7 +124,7 @@ export default function ProviderOnboardingPage() {
     onSuccess: async (b) => {
       qc.setQueryData(bootstrapQueryKey, b);
       await qc.invalidateQueries({ queryKey: ['provider-profile'] });
-      router.replace(pathAfterBootstrap(b));
+      router.replace(landingPathAfterBootstrap(b));
     },
   });
 

@@ -90,7 +90,7 @@ export function EducatorHubShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <AppHeader pageLabel="Educador" links={headerLinks} />
+      <AppHeader logoHref="/dashboard/provider" pageLabel="Educador" links={headerLinks} />
       <div className="mx-auto flex max-w-7xl flex-col gap-0 lg:flex-row lg:gap-8">
         <div className="border-b border-[var(--border)] bg-[var(--card)] px-4 py-3 lg:hidden">
           <button

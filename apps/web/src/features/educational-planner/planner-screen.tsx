@@ -92,6 +92,7 @@ export function PlannerScreen() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader
+        logoHref="/explorar"
         pageLabel="Planner"
         links={[
           { href: consumerHubHref('resumen'), label: 'Mi espacio' },

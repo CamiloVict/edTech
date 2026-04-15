@@ -23,15 +23,18 @@ export type AppHeaderLink = {
 export function AppHeader({
   pageLabel,
   links,
+  logoHref = '/',
 }: {
   pageLabel?: string;
   links: AppHeaderLink[];
+  /** Inicio de la app (p. ej. catálogo o panel), no la landing de marketing. */
+  logoHref?: string;
 }) {
   return (
     <header className={siteHeaderBarClass}>
       <div className={siteHeaderInnerClass}>
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
-          <SiteLogo href="/" />
+          <SiteLogo href={logoHref} />
           {pageLabel ? (
             <span className={siteHeaderPageLabelClass}>{pageLabel}</span>
           ) : null}

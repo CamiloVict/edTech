@@ -4,7 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 import { useBootstrapQuery, useSetRoleMutation } from '@/features/bootstrap/hooks/use-bootstrap';
-import { pathAfterBootstrap } from '@/shared/lib/routing';
+import {
+  landingPathAfterBootstrap,
+  pathAfterBootstrap,
+} from '@/shared/lib/routing';
 import { FriendlyFormShell } from '@/shared/components/friendly-form-shell';
 import { Button } from '@/shared/components/ui/button';
 
@@ -15,7 +18,7 @@ export default function RoleSelectionPage() {
 
   useEffect(() => {
     if (data && !data.needsRoleSelection) {
-      router.replace(pathAfterBootstrap(data));
+      router.replace(landingPathAfterBootstrap(data));
     }
   }, [data, router]);
 

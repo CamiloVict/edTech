@@ -186,6 +186,7 @@ export default function ProviderProfilePage() {
   return (
     <div className="min-h-screen bg-stone-50">
       <AppHeader
+        logoHref="/dashboard/provider"
         pageLabel="Mi perfil"
         links={[
           { href: '/dashboard/provider', label: 'Mi panel', emphasized: true },

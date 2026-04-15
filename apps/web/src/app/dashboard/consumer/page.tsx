@@ -187,7 +187,7 @@ function ConsumerHubContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader pageLabel="Familia" links={hubLinks} />
+      <AppHeader logoHref="/explorar" pageLabel="Familia" links={hubLinks} />
       <main className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
         <nav
           className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm"
