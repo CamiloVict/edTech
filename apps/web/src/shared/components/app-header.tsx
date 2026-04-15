@@ -3,15 +3,20 @@
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 
+import { SiteHeaderHamburgerButton } from '@/shared/components/site-header-hamburger-button';
+import { SiteHeaderMobilePanel } from '@/shared/components/site-header-mobile-panel';
 import { SiteLogo } from '@/shared/components/site-logo';
 import {
   siteHeaderBarClass,
   siteHeaderInnerClass,
+  siteHeaderMobileLinkClass,
+  siteHeaderMobileLinkEmphasisClass,
   siteHeaderNavLinkClass,
   siteHeaderNavLinkEmphasisClass,
   siteHeaderPageLabelClass,
   siteHeaderUserWrapClass,
 } from '@/shared/components/site-header-theme';
+import { useHeaderMobileMenu } from '@/shared/components/use-header-mobile-menu';
 
 export type AppHeaderLink = {
   href: string;
@@ -30,17 +35,20 @@ export function AppHeader({
   /** Inicio de la app (p. ej. catálogo o panel), no la landing de marketing. */
   logoHref?: string;
 }) {
+  const { headerRef, open, toggle, close, headerHeight, menuId } =
+    useHeaderMobileMenu();
+
   return (
-    <header className={siteHeaderBarClass}>
+    <header ref={headerRef} className={`${siteHeaderBarClass} relative`}>
       <div className={siteHeaderInnerClass}>
-        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
           <SiteLogo href={logoHref} />
           {pageLabel ? (
             <span className={siteHeaderPageLabelClass}>{pageLabel}</span>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-          <nav className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <nav className="hidden flex-wrap items-center justify-end gap-1.5 sm:flex sm:gap-2">
             {links.map((l) => (
               <Link
                 key={l.href}
@@ -64,8 +72,34 @@ export function AppHeader({
               }}
             />
           </div>
+          <SiteHeaderHamburgerButton
+            open={open}
+            menuId={menuId}
+            onClick={toggle}
+          />
         </div>
       </div>
+      <SiteHeaderMobilePanel
+        open={open}
+        menuId={menuId}
+        headerHeight={headerHeight}
+        onClose={close}
+      >
+        {links.map((l) => (
+          <Link
+            key={l.href}
+            href={l.href}
+            onClick={close}
+            className={
+              l.emphasized
+                ? siteHeaderMobileLinkEmphasisClass
+                : siteHeaderMobileLinkClass
+            }
+          >
+            {l.label}
+          </Link>
+        ))}
+      </SiteHeaderMobilePanel>
     </header>
   );
 }
