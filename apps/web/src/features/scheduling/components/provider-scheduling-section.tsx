@@ -9,12 +9,17 @@ import {
   deleteAvailabilityBlock,
   listMyAvailabilityBlocks,
 } from '@/features/availability/api/availability-api';
+import {
+  bootstrapQueryKey,
+  fetchBootstrap,
+} from '@/features/bootstrap/api/bootstrap-api';
 import { AvailabilityFullCalendar } from '@/features/scheduling/components/availability-full-calendar';
 import {
   listProviderAppointments,
   patchAppointment,
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
+import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input } from '@/shared/components/ui/field';
 
@@ -36,18 +41,33 @@ function blockRange(isoStart: string, isoEnd: string, isAllDay: boolean, tz: str
   return isAllDay ? `${base} (día completo · ${tz})` : base;
 }
 
+function queryErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message;
+  if (err instanceof Error) return err.message;
+  return 'Error desconocido';
+}
+
 export function ProviderSchedulingSection() {
   const { getToken } = useAuth();
   const qc = useQueryClient();
 
+  const bootstrapQuery = useQuery({
+    queryKey: bootstrapQueryKey,
+    queryFn: () => fetchBootstrap(getToken),
+  });
+
+  const isProvider = bootstrapQuery.data?.user.role === 'PROVIDER';
+
   const blocksQuery = useQuery({
     queryKey: ['availability', 'me', 'blocks'],
     queryFn: () => listMyAvailabilityBlocks(getToken),
+    enabled: isProvider,
   });
 
   const apptsQuery = useQuery({
     queryKey: ['appointments', 'provider', 'me'],
     queryFn: () => listProviderAppointments(getToken),
+    enabled: isProvider,
   });
 
   const [startsLocal, setStartsLocal] = useState('');
@@ -113,8 +133,50 @@ export function ProviderSchedulingSection() {
     [apptsQuery.data],
   );
 
+  if (bootstrapQuery.isLoading) {
+    return (
+      <p className="text-sm text-stone-600">Comprobando tu sesión…</p>
+    );
+  }
+
+  if (bootstrapQuery.isError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <p className="font-semibold">No se pudo cargar tu sesión</p>
+        <p className="mt-1">{queryErrorMessage(bootstrapQuery.error)}</p>
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-3 text-xs"
+          onClick={() => bootstrapQuery.refetch()}
+        >
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
+  if (!isProvider) {
+    return (
+      <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        Solo los educadores pueden gestionar disponibilidad y citas. Si acabas
+        de cambiar de rol, vuelve a entrar o recarga la página.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {patchApptMut.isError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <p className="font-semibold">No se pudo actualizar la cita</p>
+          <p className="mt-1">{queryErrorMessage(patchApptMut.error)}</p>
+          <p className="mt-2 text-xs text-red-800/90">
+            Si choca con otra cita ya confirmada, cancela o reprograma la otra
+            antes de confirmar esta.
+          </p>
+        </div>
+      ) : null}
       <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="text-base font-bold text-stone-900">
           Disponibilidad (ventanas)
@@ -129,11 +191,24 @@ export function ProviderSchedulingSection() {
             En <span className="font-medium">Mes</span>,{' '}
             <span className="font-medium">Semana</span> o{' '}
             <span className="font-medium">Día</span>, arrastra para marcar una
-            ventana. Las familias la verán en verde. Pulsa un bloque existente
-            para eliminarlo.
+            ventana. Las familias solo podrán reservar dentro de esos rangos.
+            Pulsa un bloque existente para eliminarlo.
           </p>
         </div>
-        {blocksQuery.isLoading ? (
+        {blocksQuery.isError ? (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+            <p className="font-semibold">No se pudo cargar la disponibilidad</p>
+            <p className="mt-1">{queryErrorMessage(blocksQuery.error)}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-3 text-xs"
+              onClick={() => blocksQuery.refetch()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        ) : blocksQuery.isLoading ? (
           <p className="mt-4 text-sm text-stone-500">Cargando calendario…</p>
         ) : (
           <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white p-2 shadow-sm sm:p-3">
@@ -249,7 +324,25 @@ export function ProviderSchedulingSection() {
           Cada solicitud va ligada al hijo o hija para quien la familia pide el
           servicio (si hay varios en casa, verás nombres distintos).
         </p>
-        {apptsQuery.isLoading ? (
+        {apptsQuery.isError ? (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+            <p className="font-semibold">No se pudieron cargar las citas</p>
+            <p className="mt-1">{queryErrorMessage(apptsQuery.error)}</p>
+            <p className="mt-2 text-xs text-red-800/90">
+              Si ves 401 o 403, la sesión puede haber caducado: cierra sesión y
+              entra de nuevo. Si el mensaje es “User not found”, visita{' '}
+              <span className="font-medium">Mi espacio</span> para sincronizar.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-3 text-xs"
+              onClick={() => apptsQuery.refetch()}
+            >
+              Reintentar
+            </Button>
+          </div>
+        ) : apptsQuery.isLoading ? (
           <p className="mt-2 text-sm text-stone-500">Cargando citas…</p>
         ) : pending.length === 0 ? (
           <p className="mt-2 text-sm text-stone-600">
@@ -285,7 +378,7 @@ export function ProviderSchedulingSection() {
                     {a.noteFromFamily}
                   </p>
                 ) : null}
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button
                     variant="primary"
                     className="text-xs"
@@ -306,6 +399,9 @@ export function ProviderSchedulingSection() {
                   >
                     Rechazar
                   </Button>
+                  {patchApptMut.isPending ? (
+                    <span className="text-xs text-stone-500">Enviando…</span>
+                  ) : null}
                 </div>
               </li>
             ))}

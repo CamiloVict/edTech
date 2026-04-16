@@ -190,7 +190,6 @@ export default function ProviderProfilePage() {
         pageLabel="Mi perfil"
         links={[
           { href: '/dashboard/provider', label: 'Mi panel', emphasized: true },
-          { href: '/explorar', label: 'Educadores' },
           { href: '/profile/provider', label: 'Mi perfil' },
         ]}
       />

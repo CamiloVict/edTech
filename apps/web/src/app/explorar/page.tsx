@@ -1,7 +1,32 @@
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+
+import { syncUserWithToken } from '@/features/bootstrap/server-sync';
 import { ProviderDiscovery } from '@/features/discover/provider-discovery';
 import { PublicSiteHeader } from '@/shared/components/public-site-header';
 
-export default function ExplorarPage() {
+export default async function ExplorarPage() {
+  const a = await auth();
+  if (a.userId) {
+    const token = await a.getToken();
+    if (token) {
+      try {
+        const data = await syncUserWithToken(token);
+        const b = data?.bootstrap;
+        if (
+          b &&
+          !b.needsRoleSelection &&
+          !b.needsOnboarding &&
+          b.user.role === 'PROVIDER'
+        ) {
+          redirect('/dashboard/provider');
+        }
+      } catch {
+        // Si falla el sync, se muestra el catálogo (p. ej. API caída).
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-stone-50">
       <PublicSiteHeader />

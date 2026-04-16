@@ -78,10 +78,6 @@ export function PublicSiteHeader() {
               </>
             ) : (
               <>
-                <Link href="/explorar" className={siteHeaderNavLinkClass}>
-                  Educadores
-                </Link>
-
                 {navLoading ? (
                   <span className="px-2 py-2 text-xs text-muted-foreground">
                     Cargando menú…
@@ -113,6 +109,9 @@ export function PublicSiteHeader() {
                   </Link>
                 ) : boot?.user.role === 'CONSUMER' ? (
                   <>
+                    <Link href="/explorar" className={siteHeaderNavLinkClass}>
+                      Educadores
+                    </Link>
                     <Link
                       href={consumerHubHref('resumen')}
                       className={siteHeaderNavLinkEmphasisClass}
@@ -256,13 +255,6 @@ export function PublicSiteHeader() {
           </>
         ) : boot?.user.role === 'PROVIDER' ? (
           <>
-            <Link
-              href="/explorar"
-              onClick={close}
-              className={siteHeaderMobileLinkClass}
-            >
-              Educadores
-            </Link>
             <Link
               href="/dashboard/provider"
               onClick={close}

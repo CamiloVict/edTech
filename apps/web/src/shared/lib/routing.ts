@@ -16,15 +16,15 @@ export function pathAfterBootstrap(b: BootstrapPayload): string {
 }
 
 /**
- * Primera pantalla tras login o al terminar el onboarding: catálogo público.
- * Los dashboards siguen usando `pathAfterBootstrap` para no redirigir fuera del hub.
+ * Primera pantalla tras login o al terminar el onboarding.
+ * Familias van al catálogo; educadores al panel (no deben usar /explorar).
  */
 export function landingPathAfterBootstrap(b: BootstrapPayload): string {
   if (b.needsRoleSelection) {
     return '/role';
   }
   if (!b.needsOnboarding) {
-    return '/explorar';
+    return b.user.role === 'PROVIDER' ? '/dashboard/provider' : '/explorar';
   }
   return b.user.role === 'CONSUMER'
     ? '/onboarding/consumer'

@@ -46,7 +46,23 @@ function useBookingViewer() {
       boot?.consumerProfile?.isProfileCompleted === true;
     const canBook = role === 'CONSUMER' && consumerComplete;
     const isProviderViewer = role === 'PROVIDER';
-    return { isSignedIn, canBook, isProviderViewer };
+    const providerReady =
+      role === 'PROVIDER' &&
+      !boot?.needsRoleSelection &&
+      !boot?.needsOnboarding;
+    const catalogBackHref = providerReady ? '/dashboard/provider' : '/explorar';
+    const catalogBackHomeHref = providerReady
+      ? '/dashboard/provider'
+      : '/#explorar';
+    const catalogBackLabel = providerReady ? 'Mi panel' : 'Educadores';
+    return {
+      isSignedIn,
+      canBook,
+      isProviderViewer,
+      catalogBackHref,
+      catalogBackHomeHref,
+      catalogBackLabel,
+    };
   }, [userId, bootstrapQuery.data]);
 }
 
@@ -115,10 +131,12 @@ export function EducatorProfilePage({
               : 'Comprueba tu conexión o inténtalo más tarde.'}
           </p>
           <Link
-            href="/explorar"
+            href={viewer.catalogBackHref}
             className="mt-6 inline-block text-sm font-semibold text-primary underline"
           >
-            Volver a educadores
+            {viewer.catalogBackHref === '/dashboard/provider'
+              ? 'Volver a mi panel'
+              : 'Volver a educadores'}
           </Link>
         </div>
       </div>
@@ -149,10 +167,10 @@ export function EducatorProfilePage({
         <div className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
           <nav className="mb-8 text-sm">
             <Link
-              href="/#explorar"
+              href={viewer.catalogBackHomeHref}
               className="font-medium text-white/85 transition hover:text-white"
             >
-              ← Educadores
+              ← {viewer.catalogBackLabel}
             </Link>
           </nav>
           <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start">

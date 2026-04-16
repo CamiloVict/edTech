@@ -63,7 +63,6 @@ export function EducatorHubShell({ children }: { children: React.ReactNode }) {
   const headerLinks = useMemo(
     () => [
       { href: '/dashboard/provider', label: 'Mi panel', emphasized: true as const },
-      { href: '/explorar', label: 'Explorar' },
       { href: '/profile/provider', label: 'Editar perfil' },
     ],
     [],

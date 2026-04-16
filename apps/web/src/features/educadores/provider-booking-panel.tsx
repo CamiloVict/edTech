@@ -30,6 +30,10 @@ export type ProviderBookingViewer = {
   isSignedIn: boolean;
   canBook: boolean;
   isProviderViewer: boolean;
+  /** Enlaces “volver” desde la ficha pública (familia → catálogo, educador → panel). */
+  catalogBackHref: string;
+  catalogBackHomeHref: string;
+  catalogBackLabel: string;
 };
 
 /** Desde el calendario público del perfil: mismo `id` en peticiones consecutivas fuerza re-aplicar. */

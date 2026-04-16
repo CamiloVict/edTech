@@ -262,7 +262,9 @@ export class AppointmentsService {
         next !== AppointmentStatus.DECLINED &&
         next !== AppointmentStatus.CANCELLED_BY_PROVIDER
       ) {
-        throw new BadRequestException('Invalid status for provider');
+        throw new BadRequestException(
+          'Estado no válido: como educador puedes confirmar, rechazar o cancelar citas.',
+        );
       }
 
       if (next === AppointmentStatus.CANCELLED_BY_PROVIDER) {
@@ -280,10 +282,14 @@ export class AppointmentsService {
       }
 
       if (appt.status !== AppointmentStatus.PENDING && next === AppointmentStatus.CONFIRMED) {
-        throw new BadRequestException('Only pending appointments can be confirmed');
+        throw new BadRequestException(
+          'Solo se pueden confirmar citas que siguen pendientes.',
+        );
       }
       if (appt.status !== AppointmentStatus.PENDING && next === AppointmentStatus.DECLINED) {
-        throw new BadRequestException('Only pending appointments can be declined');
+        throw new BadRequestException(
+          'Solo se pueden rechazar citas que siguen pendientes.',
+        );
       }
 
       if (next === AppointmentStatus.CONFIRMED) {
@@ -304,7 +310,7 @@ export class AppointmentsService {
             )
           ) {
             throw new BadRequestException(
-              'Another confirmed appointment overlaps this time slot',
+              'Ya tienes otra cita confirmada que se solapa con este horario. Cancela o reprograma la otra antes de confirmar esta.',
             );
           }
         }
@@ -317,6 +323,8 @@ export class AppointmentsService {
       });
     }
 
-    throw new ForbiddenException('Invalid role');
+    throw new ForbiddenException(
+      'Tu cuenta no tiene un rol que pueda modificar esta cita (se requiere familia o educador).',
+    );
   }
 }

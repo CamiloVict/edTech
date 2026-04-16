@@ -7,9 +7,11 @@ import {
   getDevelopmentStageByAge,
   type ContentIntensity,
 } from '@repo/educational-planner';
+import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { useBootstrapQuery } from '@/features/bootstrap/hooks/use-bootstrap';
 import { consumerHubHref } from '@/features/consumer/lib/consumer-hub';
 import { PlannerRoadmap } from '@/features/educational-planner/planner-roadmap';
 import { usePlannerStore } from '@/features/educational-planner/planner-store';
@@ -46,6 +48,41 @@ function splitGoalsOrInterests(raw: string): string[] {
 }
 
 export function PlannerScreen() {
+  const { userId, isLoaded } = useAuth();
+  const bootstrapQuery = useBootstrapQuery({
+    enabled: Boolean(isLoaded && userId),
+  });
+  const boot = bootstrapQuery.data;
+  const providerInHub =
+    boot?.user.role === 'PROVIDER' &&
+    !boot.needsRoleSelection &&
+    !boot.needsOnboarding;
+
+  const plannerHeader = useMemo(() => {
+    if (providerInHub) {
+      return {
+        logoHref: '/dashboard/provider' as const,
+        links: [
+          {
+            href: '/dashboard/provider',
+            label: 'Mi panel',
+            emphasized: true as const,
+          },
+          { href: '/profile/provider', label: 'Mi perfil' },
+        ],
+      };
+    }
+    return {
+      logoHref: '/explorar' as const,
+      links: [
+        { href: consumerHubHref('resumen'), label: 'Mi espacio' },
+        { href: '/planner', label: 'Planner', emphasized: true as const },
+        { href: '/explorar', label: 'Educadores' },
+        { href: consumerHubHref('familia'), label: 'Familia y datos' },
+      ],
+    };
+  }, [providerInHub]);
+
   const child = usePlannerStore((s) => s.child);
   const categoryId = usePlannerStore((s) => s.categoryId);
   const suggestion = usePlannerStore((s) => s.suggestion);
@@ -92,14 +129,9 @@ export function PlannerScreen() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader
-        logoHref="/explorar"
+        logoHref={plannerHeader.logoHref}
         pageLabel="Planner"
-        links={[
-          { href: consumerHubHref('resumen'), label: 'Mi espacio' },
-          { href: '/planner', label: 'Planner', emphasized: true },
-          { href: '/explorar', label: 'Educadores' },
-          { href: consumerHubHref('familia'), label: 'Familia y datos' },
-        ]}
+        links={plannerHeader.links}
       />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
