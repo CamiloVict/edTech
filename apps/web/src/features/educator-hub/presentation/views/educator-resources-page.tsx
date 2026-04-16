@@ -23,7 +23,7 @@ export function EducatorResourcesPage({ resources }: { resources: EducatorResour
       <header>
         <h1 className="text-2xl font-bold text-[var(--foreground)] sm:text-3xl">Centro de recursos</h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">
-          Guias y plantillas demo. Filtros locales.
+          Biblioteca de guías y plantillas. El catálogo conectado llegará más adelante.
         </p>
       </header>
       <div className="flex flex-wrap items-center gap-2">
@@ -59,6 +59,11 @@ export function EducatorResourcesPage({ resources }: { resources: EducatorResour
         </label>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2">
+        {list.length === 0 ? (
+          <li className="col-span-full rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-10 text-center text-sm text-[var(--muted-foreground)]">
+            No hay recursos en tu biblioteca todavía.
+          </li>
+        ) : null}
         {list.map((r) => (
           <li
             key={r.id}

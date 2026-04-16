@@ -52,28 +52,28 @@ function Kpi({
 const GROWTH_CTAS: { href: string; label: string; body: string }[] = [
   {
     href: '/dashboard/provider/ofertas',
-    label: 'Crear nueva oferta',
-    body: 'Duplica un taller que ya convierte o lanza una ruta corta.',
+    label: 'Ofertas educativas',
+    body: 'Cuando activemos el editor, aquí publicarás talleres y paquetes.',
   },
   {
     href: '/dashboard/provider/agenda',
-    label: 'Abrir disponibilidad',
-    body: 'Tienen demanda los sábados por la mañana: añade 2 bloques.',
+    label: 'Agenda y horarios',
+    body: 'Publica ventanas para que las familias puedan reservar contigo.',
   },
   {
     href: '/profile/provider',
-    label: 'Subir video de presentación',
-    body: 'Los perfiles con video suelen generar más solicitudes serias.',
+    label: 'Mi perfil',
+    body: 'Mantén bio, ciudad y datos de contacto al día.',
   },
   {
     href: '/dashboard/provider/estudiantes',
-    label: 'Revisar roadmap',
-    body: 'Ajusta el plan de Lucas antes de la próxima sesión.',
+    label: 'Estudiantes',
+    body: 'Seguimiento por alumno y familia (en desarrollo).',
   },
   {
     href: '/dashboard/provider/vitrina',
-    label: 'Mejorar vitrina',
-    body: 'Completa metodología y paquetes para subir confianza.',
+    label: 'Vitrina pública',
+    body: 'Previsualiza cómo te ven las familias en tu ficha.',
   },
 ];
 
@@ -100,8 +100,8 @@ export function EducatorDashboardHome({
             Hola, {displayName}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted-foreground)]">
-            Aquí ves actividad, demanda y próximos pasos para conseguir familias, organizar tu semana y
-            mostrar tu valor con claridad.
+            Citas reales y datos de tu perfil. Otras secciones se irán conectando a la medida que
+            estén listas en la plataforma.
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
@@ -129,13 +129,14 @@ export function EducatorDashboardHome({
         <Kpi
           label="Ingresos del mes (estim.)"
           value={formatMoneyMinor(kpis.revenueMonthMinor, currency)}
-          hint="Demo · conecta pagos reales después"
+          hint="Próximamente con pagos"
         />
         <Kpi label="Sesiones esta semana" value={String(kpis.sessionsThisWeek)} />
         <Kpi label="Leads nuevos" value={String(kpis.newLeads)} />
         <Kpi
           label="Conversión perfil → reserva"
           value={formatPercent(kpis.profileViewsToBookingRate)}
+          hint="Métrica en desarrollo"
         />
         <Kpi
           label="Horas disponibles (sem.)"
@@ -145,6 +146,7 @@ export function EducatorDashboardHome({
         <Kpi
           label="Retención"
           value={formatPercent(kpis.retentionRate, 0)}
+          hint="Métrica en desarrollo"
         />
       </div>
 
@@ -160,24 +162,50 @@ export function EducatorDashboardHome({
             </Link>
           </div>
           <ul className="mt-4 space-y-3">
-            {upcomingSessions.map((s) => (
-              <li
-                key={s.id}
-                className="flex flex-col gap-1 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-[var(--foreground)]">{s.childName}</p>
-                  <p className="text-sm text-[var(--muted-foreground)]">{s.offerTitle}</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">{s.familyName}</p>
-                </div>
-                <div className="text-right text-sm">
-                  <p className="font-medium text-[var(--primary)]">{formatSessionRange(s.startsAt, s.endsAt)}</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    {s.status === 'PENDING' ? 'Pendiente de confirmación' : 'Confirmada'}
-                  </p>
-                </div>
+            {upcomingSessions.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--muted)]/30 px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                No tienes citas futuras pendientes o confirmadas. Publica disponibilidad y revisa
+                solicitudes en{' '}
+                <Link
+                  href="/dashboard/provider/agenda"
+                  className="font-semibold text-[var(--primary)] underline underline-offset-2"
+                >
+                  Agenda y horarios
+                </Link>
+                .
               </li>
-            ))}
+            ) : (
+              upcomingSessions.map((s) => {
+                const pending = s.status === 'PENDING';
+                return (
+                  <li
+                    key={s.id}
+                    className={`flex flex-col gap-1 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+                      pending
+                        ? 'border-amber-400/80 bg-amber-50/90 ring-1 ring-amber-300/50 dark:bg-amber-950/25 dark:ring-amber-700/40'
+                        : 'border-[var(--border)] bg-[var(--background)]'
+                    }`}
+                  >
+                    <div>
+                      {pending ? (
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                          Requiere tu aprobación
+                        </p>
+                      ) : null}
+                      <p className="font-medium text-[var(--foreground)]">{s.childName}</p>
+                      <p className="text-sm text-[var(--muted-foreground)]">{s.offerTitle}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">{s.familyName}</p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="font-medium text-[var(--primary)]">{formatSessionRange(s.startsAt, s.endsAt)}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        {pending ? 'Pendiente de confirmación' : 'Confirmada'}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })
+            )}
           </ul>
         </Surface>
 
@@ -219,11 +247,13 @@ export function EducatorDashboardHome({
         <Surface>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">Solicitudes recientes</h2>
-            <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-0.5 text-xs font-semibold text-[var(--primary)]">
-              CRM liviano
-            </span>
           </div>
           <ul className="mt-4 space-y-3">
+            {leads.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                Aún no hay mensajes de contacto centralizados aquí.
+              </li>
+            ) : null}
             {leads.map((l) => (
               <li key={l.id} className="rounded-xl border border-[var(--border)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -253,6 +283,11 @@ export function EducatorDashboardHome({
             </Link>
           </div>
           <ul className="mt-4 space-y-3">
+            {activeStudents.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                El listado de estudiantes conectado a citas reales llegará en una próxima versión.
+              </li>
+            ) : null}
             {activeStudents.map((s) => (
               <li key={s.id}>
                 <Link
@@ -271,32 +306,39 @@ export function EducatorDashboardHome({
         </Surface>
       </div>
 
-      <Surface>
-        <h2 className="text-lg font-semibold text-[var(--foreground)]">Insights de crecimiento</h2>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Decisiones accionables basadas en comportamiento de familias (demo).
-        </p>
-        <ul className="mt-4 grid gap-3 md:grid-cols-3">
-          {insights.map((i) => (
-            <li
-              key={i.id}
-              className={`rounded-xl border p-4 ${
-                i.priority === 'high'
-                  ? 'border-[var(--accent)] bg-[var(--accent-soft)]/25'
-                  : 'border-[var(--border)] bg-[var(--background)]'
-              }`}
-            >
-              <p className="font-semibold text-[var(--foreground)]">{i.title}</p>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">{i.body}</p>
-            </li>
-          ))}
-        </ul>
-      </Surface>
+      {insights.length > 0 ? (
+        <Surface>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Insights de crecimiento</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            Decisiones accionables basadas en el uso de la plataforma.
+          </p>
+          <ul className="mt-4 grid gap-3 md:grid-cols-3">
+            {insights.map((i) => (
+              <li
+                key={i.id}
+                className={`rounded-xl border p-4 ${
+                  i.priority === 'high'
+                    ? 'border-[var(--accent)] bg-[var(--accent-soft)]/25'
+                    : 'border-[var(--border)] bg-[var(--background)]'
+                }`}
+              >
+                <p className="font-semibold text-[var(--foreground)]">{i.title}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted-foreground)]">{i.body}</p>
+              </li>
+            ))}
+          </ul>
+        </Surface>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Surface>
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Ofertas con mejor desempeño</h2>
           <ul className="mt-4 space-y-2">
+            {topOffers.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                Las ofertas publicadas aparecerán aquí cuando exista el módulo conectado a datos reales.
+              </li>
+            ) : null}
             {topOffers.map((o) => (
               <li
                 key={o.offerId}
@@ -321,6 +363,11 @@ export function EducatorDashboardHome({
         <Surface>
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Reseñas recientes</h2>
           <ul className="mt-4 space-y-3">
+            {recentReviews.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                Las reseñas de familias se mostrarán aquí cuando el módulo de valoraciones esté activo.
+              </li>
+            ) : null}
             {recentReviews.map((r) => (
               <li key={r.id} className="rounded-xl border border-[var(--border)] p-4">
                 <div className="flex items-center justify-between gap-2">

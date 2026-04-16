@@ -22,6 +22,12 @@ export function EducatorStudentsPage({ students }: { students: EducatorStudent[]
         </p>
       </header>
 
+      {students.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-10 text-center text-sm text-[var(--muted-foreground)]">
+          Cuando conectemos el CRM de estudiantes a tus citas, verás aquí a cada
+          niño o niña con su familia y objetivos.
+        </p>
+      ) : (
       <ul className="grid gap-4 sm:grid-cols-2">
         {students.map((s) => (
           <li key={s.id}>
@@ -63,6 +69,7 @@ export function EducatorStudentsPage({ students }: { students: EducatorStudent[]
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }

@@ -1,51 +1,261 @@
-import type { EducatorDashboardSnapshot } from '../domain/types';
-import {
-  MOCK_BADGES,
-  MOCK_EDUCATOR_PROFILE,
-  MOCK_INSIGHTS,
-  MOCK_LEADS,
-  MOCK_OFFERS,
-  MOCK_PROFILE_ITEMS,
-  MOCK_REVIEWS,
-  MOCK_STUDENTS,
-  MOCK_UPCOMING_SESSIONS,
-} from '../data/educator-hub.mocks';
+import type { AppointmentRow } from '@/features/appointments/api/appointments-api';
+import type { ProviderProfileResponse } from '@/features/provider/api/provider-api';
+import type { ProviderRateApiRow } from '@/features/provider-rates/api/provider-rates-api';
+import type {
+  EducatorDashboardSnapshot,
+  EducatorProfile,
+  EducatorSession,
+  ProfileCompletionItem,
+  ServiceMode,
+} from '../domain/types';
 
-/**
- * Agrega KPIs y listas a partir de mocks — sustituir por respuesta API.
- */
-export function buildEducatorDashboardSnapshot(): EducatorDashboardSnapshot {
-  const done = MOCK_PROFILE_ITEMS.filter((i) => i.done).length;
-  const scorePercent = Math.round((done / MOCK_PROFILE_ITEMS.length) * 100);
+export type BuildEducatorDashboardInput = {
+  providerProfile: ProviderProfileResponse;
+  contactEmail: string;
+  appointments: AppointmentRow[];
+  availabilityBlocks: { startsAt: string; endsAt: string }[];
+  rates: ProviderRateApiRow[];
+};
+
+const TERMINAL = new Set<AppointmentRow['status']>([
+  'DECLINED',
+  'CANCELLED_BY_FAMILY',
+  'CANCELLED_BY_PROVIDER',
+]);
+
+function defaultServiceMode(m: ServiceMode | null): ServiceMode {
+  return m ?? 'HYBRID';
+}
+
+/** Perfil de vitrina / panel a partir de datos reales del API. */
+export function educatorProfileFromProvider(
+  p: ProviderProfileResponse,
+  contactEmail: string,
+  rates: ProviderRateApiRow[],
+): EducatorProfile {
+  const bio = p.bio?.trim() ?? '';
+  const name = p.fullName?.trim() || 'Educador';
+  const priceFrom =
+    rates.length > 0
+      ? Math.min(...rates.map((r) => r.amountMinor))
+      : 0;
+  const currency = rates[0]?.currency ?? 'EUR';
 
   return {
-    profile: MOCK_EDUCATOR_PROFILE,
+    id: p.id,
+    clerkUserId: p.userId,
+    fullName: name,
+    headline: bio ? bio.slice(0, 120) + (bio.length > 120 ? '…' : '') : 'Completa tu presentación en Mi perfil',
+    email: contactEmail || '—',
+    photoUrl: p.photoUrl,
+    bioShort: bio ? bio.slice(0, 280) : 'Añade una bio para que las familias te conozcan mejor.',
+    bioLong: bio || 'Aún no has escrito una descripción larga. Puedes hacerlo en Mi perfil.',
+    yearsOfExperience: p.yearsOfExperience ?? 0,
+    serviceMode: defaultServiceMode(p.serviceMode),
+    city: p.city,
+    zones: [],
+    focusAreas: p.focusAreas.length ? p.focusAreas : [],
+    categories: [],
+    ageBands: [],
+    methodology: '',
+    languages: ['Español'],
+    certifications: [],
+    averageRating: p.averageRating,
+    ratingCount: p.ratingCount,
+    isAvailable: p.isAvailable,
+    availabilitySummary: p.availabilitySummary?.trim() || 'Publica ventanas de disponibilidad en Agenda y horarios.',
+    priceFromMinor: priceFrom,
+    currency,
+    videoPresentationUrl: null,
+    galleryUrls: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/** Checklist de perfil a partir de campos reales. */
+export function buildProfileCompletionFromProvider(
+  p: ProviderProfileResponse,
+): { scorePercent: number; items: ProfileCompletionItem[] } {
+  const items: ProfileCompletionItem[] = [
+    {
+      id: 'name',
+      label: 'Nombre completo',
+      done: Boolean(p.fullName?.trim()),
+      impactLabel: 'Confianza',
+    },
+    {
+      id: 'bio',
+      label: 'Bio o descripción',
+      done: Boolean(p.bio?.trim()),
+      impactLabel: 'Conversión',
+    },
+    {
+      id: 'city',
+      label: 'Ciudad',
+      done: Boolean(p.city?.trim()),
+      impactLabel: 'Búsqueda local',
+    },
+    {
+      id: 'photo',
+      label: 'Foto de perfil (URL)',
+      done: Boolean(p.photoUrl?.trim()),
+      impactLabel: 'Primera impresión',
+    },
+    {
+      id: 'experience',
+      label: 'Años de experiencia',
+      done: p.yearsOfExperience != null && p.yearsOfExperience >= 0,
+      impactLabel: 'Credibilidad',
+    },
+    {
+      id: 'mode',
+      label: 'Modalidad de servicio',
+      done: p.serviceMode != null,
+      impactLabel: 'Expectativas',
+    },
+    {
+      id: 'focus',
+      label: 'Especialidades / enfoque',
+      done: p.focusAreas.length > 0,
+      impactLabel: 'Afinidad',
+    },
+    {
+      id: 'kinds',
+      label: 'Tipo de servicio (docente o cuidado)',
+      done: p.kinds.length > 0,
+      impactLabel: 'Descubrimiento',
+    },
+  ];
+  const done = items.filter((i) => i.done).length;
+  const scorePercent =
+    items.length === 0 ? 0 : Math.round((done / items.length) * 100);
+  return { scorePercent, items };
+}
+
+function appointmentToSession(
+  a: AppointmentRow,
+  serviceMode: ServiceMode,
+): EducatorSession | null {
+  if (TERMINAL.has(a.status)) return null;
+  if (a.status !== 'PENDING' && a.status !== 'CONFIRMED') return null;
+  const ends = new Date(a.endsAt);
+  if (Number.isNaN(ends.getTime()) || ends < new Date()) return null;
+
+  const family = a.consumerProfile.fullName?.trim() || 'Familia';
+  const child = a.child?.firstName ?? '—';
+
+  return {
+    id: a.id,
+    startsAt: a.startsAt,
+    endsAt: a.endsAt,
+    status: a.status === 'PENDING' ? 'PENDING' : 'CONFIRMED',
+    studentName: child,
+    familyName: family,
+    childName: child,
+    modality: serviceMode,
+    offerTitle: a.requestsAlternativeSchedule
+      ? 'Cita · horario propuesto'
+      : 'Cita',
+    notes: a.noteFromFamily ?? undefined,
+  };
+}
+
+/** Pendientes de aprobación primero; luego por hora de inicio. */
+export function sortUpcomingEducatorSessions(
+  sessions: EducatorSession[],
+): EducatorSession[] {
+  return [...sessions].sort((a, b) => {
+    const pa = a.status === 'PENDING' ? 0 : 1;
+    const pb = b.status === 'PENDING' ? 0 : 1;
+    if (pa !== pb) return pa - pb;
+    return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
+  });
+}
+
+function startOfIsoWeekMonday(now: Date): Date {
+  const d = new Date(now);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function sessionsStartingThisWeek(
+  appointments: AppointmentRow[],
+  now: Date,
+): number {
+  const start = startOfIsoWeekMonday(now);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return appointments.filter((a) => {
+    if (TERMINAL.has(a.status)) return false;
+    const s = new Date(a.startsAt);
+    return !Number.isNaN(s.getTime()) && s >= start && s < end;
+  }).length;
+}
+
+/** Suma horas de bloques que intersectan los próximos 7 días (aprox.). */
+function openHoursNextSevenDays(
+  blocks: { startsAt: string; endsAt: string }[],
+  now: Date,
+): number {
+  const horizon = new Date(now.getTime() + 7 * 86400000);
+  let ms = 0;
+  for (const b of blocks) {
+    const bs = new Date(b.startsAt);
+    const be = new Date(b.endsAt);
+    if (Number.isNaN(bs.getTime()) || Number.isNaN(be.getTime()) || be <= now)
+      continue;
+    const sliceStart = bs > now ? bs : now;
+    const sliceEnd = be < horizon ? be : horizon;
+    if (sliceEnd > sliceStart) ms += sliceEnd.getTime() - sliceStart.getTime();
+  }
+  return Math.round((ms / 3600000) * 10) / 10;
+}
+
+/**
+ * Panel del educador sin datos demo: citas, perfil, bloques y tarifas reales;
+ * el resto de secciones llegan vacías hasta tener API.
+ */
+export function buildEducatorDashboardSnapshot(
+  input: BuildEducatorDashboardInput,
+): EducatorDashboardSnapshot {
+  const now = new Date();
+  const sm = defaultServiceMode(input.providerProfile.serviceMode);
+  const sessions = sortUpcomingEducatorSessions(
+    input.appointments
+      .map((a) => appointmentToSession(a, sm))
+      .filter((x): x is EducatorSession => x != null),
+  );
+
+  const profile = educatorProfileFromProvider(
+    input.providerProfile,
+    input.contactEmail,
+    input.rates,
+  );
+  const profileCompletion = buildProfileCompletionFromProvider(
+    input.providerProfile,
+  );
+
+  return {
+    profile,
     kpis: {
-      revenueMonthMinor: 124_500,
-      sessionsThisWeek: 7,
-      newLeads: MOCK_LEADS.filter((l) => l.status === 'NEW').length,
-      profileViewsToBookingRate: 0.034,
-      openHoursWeek: 11.5,
-      avgRating: MOCK_EDUCATOR_PROFILE.averageRating,
-      retentionRate: 0.72,
+      revenueMonthMinor: 0,
+      sessionsThisWeek: sessionsStartingThisWeek(input.appointments, now),
+      newLeads: 0,
+      profileViewsToBookingRate: 0,
+      openHoursWeek: openHoursNextSevenDays(input.availabilityBlocks, now),
+      avgRating: input.providerProfile.averageRating,
+      retentionRate: 0,
     },
-    upcomingSessions: MOCK_UPCOMING_SESSIONS,
-    leads: MOCK_LEADS,
-    activeStudents: MOCK_STUDENTS.filter((s) => s.active),
-    topOffers: MOCK_OFFERS.filter((o) => o.status === 'PUBLISHED')
-      .sort((a, b) => b.bookingsCount - a.bookingsCount)
-      .slice(0, 3)
-      .map((o) => ({
-        offerId: o.id,
-        title: o.title,
-        bookings: o.bookingsCount,
-      })),
-    recentReviews: MOCK_REVIEWS,
-    insights: MOCK_INSIGHTS,
-    badges: MOCK_BADGES,
-    profileCompletion: {
-      scorePercent,
-      items: MOCK_PROFILE_ITEMS,
-    },
+    upcomingSessions: sessions,
+    leads: [],
+    activeStudents: [],
+    topOffers: [],
+    recentReviews: [],
+    insights: [],
+    badges: [],
+    profileCompletion,
   };
 }

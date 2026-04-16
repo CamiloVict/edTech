@@ -32,7 +32,7 @@ export function EducatorOffersPage({ offers }: { offers: EducatorOffer[] }) {
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] sm:text-3xl">Ofertas educativas</h1>
           <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">
-            Clases 1:1, talleres, mini cursos y rutas. Demo con acciones locales.
+            Clases 1:1, talleres, mini cursos y rutas. El editor conectado al API llegará después.
           </p>
         </div>
         <button type="button" className={buttonStyles('primary', 'shrink-0 rounded-xl')}>
@@ -56,6 +56,12 @@ export function EducatorOffersPage({ offers }: { offers: EducatorOffer[] }) {
         ))}
       </div>
       <ul className="space-y-4">
+        {list.length === 0 ? (
+          <li className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-10 text-center text-sm text-[var(--muted-foreground)]">
+            Aún no tienes ofertas. Cuando activemos la creación desde aquí, podrás
+            publicar servicios y paquetes.
+          </li>
+        ) : null}
         {list.map((o) => (
           <li
             key={o.id}

@@ -36,7 +36,8 @@ export function EducatorVitrinaPage({
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)] sm:text-3xl">Vitrina publica</h1>
           <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">
-            Asi te ven las familias. Datos enriquecidos demo; nombre y foto pueden venir de tu cuenta real.
+            Vista previa con los datos que ya guardas en Mi perfil. Completa bio, ciudad y disponibilidad
+            para dar una mejor impresión.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:items-end">
@@ -70,18 +71,20 @@ export function EducatorVitrinaPage({
                 <p className="text-sm font-medium text-white/80">Educador en Edify</p>
                 <h2 className="mt-1 text-2xl font-bold sm:text-3xl">{profile.fullName}</h2>
                 <p className="mt-2 text-base text-white/90">{profile.headline}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {badges
-                    .filter((b) => b.earned)
-                    .map((b) => (
-                      <span
-                        key={b.id}
-                        className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur"
-                      >
-                        {b.label}
-                      </span>
-                    ))}
-                </div>
+                {badges.some((b) => b.earned) ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {badges
+                      .filter((b) => b.earned)
+                      .map((b) => (
+                        <span
+                          key={b.id}
+                          className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur"
+                        >
+                          {b.label}
+                        </span>
+                      ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -95,7 +98,10 @@ export function EducatorVitrinaPage({
                 {formatServiceMode(profile.serviceMode)}
               </span>
               <span className="rounded-xl bg-[var(--muted)] px-3 py-2">
-                Edades: {formatAgeBands(profile.ageBands)}
+                Edades:{' '}
+                {profile.ageBands.length
+                  ? formatAgeBands(profile.ageBands)
+                  : 'Por definir'}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -144,20 +150,23 @@ export function EducatorVitrinaPage({
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-sm text-[var(--muted-foreground)]">{profile.categories.join(' · ')}</p>
+            <p className="mt-3 text-sm text-[var(--muted-foreground)]">
+              {profile.categories.length ? profile.categories.join(' · ') : '—'}
+            </p>
             <p className="mt-4 text-sm text-[var(--muted-foreground)]">
               <span className="font-semibold text-[var(--foreground)]">Idiomas: </span>
-              {profile.languages.join(', ')}
+              {profile.languages.length ? profile.languages.join(', ') : '—'}
             </p>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               <span className="font-semibold text-[var(--foreground)]">Certificaciones: </span>
-              {profile.certifications.join('; ')}
+              {profile.certifications.length ? profile.certifications.join('; ') : '—'}
             </p>
           </section>
           <section>
             <h3 className="text-base font-semibold text-[var(--foreground)]">Ubicacion y disponibilidad</h3>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              {profile.city ?? 'Ciudad'} · {profile.zones.join(', ')}
+              {profile.city ?? 'Ciudad'}
+              {profile.zones.length ? ` · ${profile.zones.join(', ')}` : ''}
             </p>
             <p className="mt-3 rounded-xl bg-[var(--accent-soft)]/25 p-3 text-sm text-[var(--foreground)]">
               {profile.availabilitySummary}
@@ -169,31 +178,39 @@ export function EducatorVitrinaPage({
           </section>
         </div>
 
-        <div className="border-t border-[var(--border)] p-8">
-          <h3 className="text-base font-semibold text-[var(--foreground)]">Galeria</h3>
-          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {profile.galleryUrls.map((url) => (
-              <li key={url} className="aspect-video overflow-hidden rounded-xl bg-[var(--muted)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" className="h-full w-full object-cover" />
-              </li>
-            ))}
-          </ul>
-        </div>
+        {profile.galleryUrls.length > 0 ? (
+          <div className="border-t border-[var(--border)] p-8">
+            <h3 className="text-base font-semibold text-[var(--foreground)]">Galeria</h3>
+            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {profile.galleryUrls.map((url) => (
+                <li key={url} className="aspect-video overflow-hidden rounded-xl bg-[var(--muted)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="border-t border-[var(--border)] p-8">
           <h3 className="text-base font-semibold text-[var(--foreground)]">Resenas</h3>
-          <ul className="mt-4 space-y-4">
-            {reviews.map((r) => (
-              <li key={r.id} className="rounded-xl border border-[var(--border)] p-4">
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium text-[var(--foreground)]">{r.authorName}</span>
-                  <span className="text-amber-700">{r.rating} estrellas</span>
-                </div>
-                <p className="mt-2 text-sm text-[var(--muted-foreground)]">{r.excerpt}</p>
-              </li>
-            ))}
-          </ul>
+          {reviews.length === 0 ? (
+            <p className="mt-4 text-sm text-[var(--muted-foreground)]">
+              Aún no hay reseñas publicadas. El resumen de valoración de tu perfil se muestra en la cabecera.
+            </p>
+          ) : (
+            <ul className="mt-4 space-y-4">
+              {reviews.map((r) => (
+                <li key={r.id} className="rounded-xl border border-[var(--border)] p-4">
+                  <div className="flex justify-between gap-2">
+                    <span className="font-medium text-[var(--foreground)]">{r.authorName}</span>
+                    <span className="text-amber-700">{r.rating} estrellas</span>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--muted-foreground)]">{r.excerpt}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
