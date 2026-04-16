@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,8 +12,10 @@ import {
   UserRole,
 } from '@repo/database';
 
+import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { quoteAppointmentFromRates } from './appointment-quote.util';
 import {
   ALTERNATIVE_SCHEDULE_UTC_DAY_SPAN,
   utcMaxInstantForAlternativeRequest,
@@ -42,6 +46,7 @@ export class AppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
+    private readonly payments: PaymentsService,
   ) {}
 
   private async requireConsumer(clerkUserId: string) {
@@ -88,6 +93,15 @@ export class AppointmentsService {
       },
       child: {
         select: { id: true, firstName: true },
+      },
+      payment: {
+        select: {
+          id: true,
+          status: true,
+          amountMinor: true,
+          currency: true,
+          applicationFeeMinor: true,
+        },
       },
     };
   }
@@ -200,6 +214,17 @@ export class AppointmentsService {
       }
     }
 
+    const rates = await this.prisma.providerRate.findMany({
+      where: { providerProfileId: dto.providerProfileId },
+      orderBy: [{ sortOrder: 'asc' }, { amountMinor: 'asc' }],
+    });
+    const quote = quoteAppointmentFromRates(rates, startsAt, endsAt);
+    if (!quote) {
+      throw new BadRequestException(
+        'Este educador no tiene tarifas publicadas; no se puede solicitar una clase con pago.',
+      );
+    }
+
     return this.prisma.appointment.create({
       data: {
         providerProfileId: dto.providerProfileId,
@@ -210,6 +235,10 @@ export class AppointmentsService {
         requestsAlternativeSchedule: alternative,
         noteFromFamily: dto.noteFromFamily?.trim() || null,
         childId: dto.childId,
+        quotedAmountMinor: quote.quotedAmountMinor,
+        quotedCurrency: quote.quotedCurrency,
+        quotedRateUnit: quote.quotedRateUnit,
+        providerRateId: quote.providerRateId,
       },
       include: this.appointmentInclude(),
     });
@@ -244,6 +273,7 @@ export class AppointmentsService {
       ) {
         throw new BadRequestException('This appointment cannot be cancelled');
       }
+      await this.payments.cancelAuthorizationForAppointment(appointmentId);
       return this.prisma.appointment.update({
         where: { id: appointmentId },
         data: { status: AppointmentStatus.CANCELLED_BY_FAMILY },
@@ -260,11 +290,26 @@ export class AppointmentsService {
       if (
         next !== AppointmentStatus.CONFIRMED &&
         next !== AppointmentStatus.DECLINED &&
-        next !== AppointmentStatus.CANCELLED_BY_PROVIDER
+        next !== AppointmentStatus.CANCELLED_BY_PROVIDER &&
+        next !== AppointmentStatus.COMPLETED
       ) {
         throw new BadRequestException(
-          'Estado no válido: como educador puedes confirmar, rechazar o cancelar citas.',
+          'Estado no válido: como educador puedes confirmar, rechazar, cancelar o marcar sesión terminada.',
         );
+      }
+
+      if (next === AppointmentStatus.COMPLETED) {
+        if (appt.status !== AppointmentStatus.CONFIRMED) {
+          throw new BadRequestException(
+            'Solo se pueden marcar como terminadas las citas confirmadas.',
+          );
+        }
+        await this.payments.captureAppointmentPayment(appointmentId);
+        return this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { status: AppointmentStatus.COMPLETED },
+          include: this.appointmentInclude(),
+        });
       }
 
       if (next === AppointmentStatus.CANCELLED_BY_PROVIDER) {
@@ -274,6 +319,7 @@ export class AppointmentsService {
         ) {
           throw new BadRequestException('This appointment cannot be cancelled');
         }
+        await this.payments.cancelAuthorizationForAppointment(appointmentId);
         return this.prisma.appointment.update({
           where: { id: appointmentId },
           data: { status: AppointmentStatus.CANCELLED_BY_PROVIDER },
@@ -290,6 +336,15 @@ export class AppointmentsService {
         throw new BadRequestException(
           'Solo se pueden rechazar citas que siguen pendientes.',
         );
+      }
+
+      if (next === AppointmentStatus.DECLINED) {
+        await this.payments.cancelAuthorizationForAppointment(appointmentId);
+        return this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { status: AppointmentStatus.DECLINED },
+          include: this.appointmentInclude(),
+        });
       }
 
       if (next === AppointmentStatus.CONFIRMED) {
@@ -313,6 +368,21 @@ export class AppointmentsService {
               'Ya tienes otra cita confirmada que se solapa con este horario. Cancela o reprograma la otra antes de confirmar esta.',
             );
           }
+        }
+
+        const auth = await this.payments.authorizeAppointmentPayment(appointmentId);
+        if ('requiresAction' in auth && auth.requiresAction) {
+          throw new HttpException(
+            {
+              statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+              code: 'PAYMENT_REQUIRES_ACTION',
+              message:
+                'La familia debe completar la verificación del pago (3D Secure). Cuando lo haga, la cita pasará a confirmada automáticamente.',
+              clientSecret: auth.clientSecret,
+              paymentIntentId: auth.paymentIntentId,
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
         }
       }
 

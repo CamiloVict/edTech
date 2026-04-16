@@ -41,9 +41,19 @@ enum RateUnit {
 enum AppointmentStatus {
   PENDING
   CONFIRMED
+  COMPLETED
   DECLINED
   CANCELLED_BY_FAMILY
   CANCELLED_BY_PROVIDER
+}
+
+enum AppointmentPaymentStatus {
+  NONE
+  REQUIRES_ACTION
+  AUTHORIZED
+  CAPTURED
+  CANCELED
+  FAILED
 }
 
 model User {
@@ -72,6 +82,8 @@ model ConsumerProfile {
   relationshipToChild   String?   @map("relationship_to_child")
   isProfileCompleted    Boolean   @default(false) @map("is_profile_completed")
   onboardingCompletedAt DateTime? @map("onboarding_completed_at")
+  /// Stripe Customer para cobrar sesiones (Connect + PaymentIntents).
+  stripeCustomerId      String?   @unique @map("stripe_customer_id")
   children              Child[]
   appointments          Appointment[]
   createdAt             DateTime  @default(now()) @map("created_at")
@@ -101,6 +113,10 @@ model ProviderProfile {
   /// Texto libre hasta tener schedules (ej. "Lun–Jue 8:00–14:00").
   availabilitySummary   String?      @map("availability_summary")
   kinds                 ProviderKind[] @default([TEACHER]) @map("kinds")
+  /// Cuenta conectada Stripe Express (onboarding vía Account Links).
+  stripeConnectAccountId String?     @unique @map("stripe_connect_account_id")
+  stripeChargesEnabled   Boolean     @default(false) @map("stripe_charges_enabled")
+  stripePayoutsEnabled     Boolean     @default(false) @map("stripe_payouts_enabled")
   createdAt             DateTime     @default(now()) @map("created_at")
   updatedAt             DateTime     @updatedAt @map("updated_at")
 
@@ -123,6 +139,8 @@ model ProviderRate {
   sortOrder           Int          @default(0) @map("sort_order")
   createdAt           DateTime     @default(now()) @map("created_at")
   updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  appointmentsQuoted  Appointment[]
 
   @@index([providerProfileId])
   @@map("provider_rates")
@@ -158,13 +176,47 @@ model Appointment {
   /// La familia pide un horario que no encaja en las ventanas publicadas; el educador valora la propuesta.
   requestsAlternativeSchedule Boolean  @default(false) @map("requests_alternative_schedule")
   noteFromFamily      String?            @map("note_from_family")
+  /// Importe acordado al crear la solicitud (minor units, p. ej. céntimos).
+  quotedAmountMinor   Int?               @map("quoted_amount_minor")
+  quotedCurrency      String?            @map("quoted_currency")
+  quotedRateUnit      RateUnit?          @map("quoted_rate_unit")
+  providerRateId      String?            @map("provider_rate_id")
+  providerRate        ProviderRate?      @relation(fields: [providerRateId], references: [id], onDelete: SetNull)
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  payment             AppointmentPayment?
 
   @@index([providerProfileId, startsAt])
   @@index([consumerProfileId, startsAt])
   @@index([status])
   @@map("appointments")
+}
+
+model AppointmentPayment {
+  id                    String                   @id @default(cuid())
+  appointmentId       String                   @unique @map("appointment_id")
+  appointment         Appointment              @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  stripePaymentIntentId String?                @unique @map("stripe_payment_intent_id")
+  status              AppointmentPaymentStatus @default(NONE)
+  amountMinor         Int                      @map("amount_minor")
+  currency            String
+  applicationFeeMinor Int                      @map("application_fee_minor")
+  lastStripeEventId   String?                  @map("last_stripe_event_id")
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  @@index([stripePaymentIntentId])
+  @@map("appointment_payments")
+}
+
+/// Dedupe de webhooks Stripe (idempotencia).
+model StripeProcessedEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique @map("stripe_event_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("stripe_processed_events")
 }
 
 model Child {

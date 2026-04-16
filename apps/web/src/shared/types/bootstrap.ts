@@ -21,6 +21,8 @@ export type BootstrapConsumerProfile = {
   city: string | null;
   relationshipToChild: string | null;
   isProfileCompleted: boolean;
+  /** Customer Stripe creado al preparar método de pago. */
+  hasStripeCustomer: boolean;
   children: BootstrapChild[];
 };
 
@@ -39,6 +41,10 @@ export type BootstrapProviderProfile = {
   isAvailable: boolean;
   availabilitySummary: string | null;
   kinds: ProviderKind[];
+  stripeConnectAccountId: string | null;
+  stripeChargesEnabled: boolean;
+  stripePayoutsEnabled: boolean;
+  needsStripeConnect: boolean;
 };
 
 export type BootstrapPayload = {

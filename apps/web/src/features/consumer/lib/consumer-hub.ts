@@ -1,12 +1,12 @@
 /** Secciones del hub familiar (una sola ruta `/dashboard/consumer`). */
-export type ConsumerHubSection = 'resumen' | 'familia' | 'citas';
+export type ConsumerHubSection = 'resumen' | 'familia' | 'citas' | 'pagos';
 
 const BASE = '/dashboard/consumer';
 
 export function parseConsumerHubSection(
   raw: string | null,
 ): ConsumerHubSection {
-  if (raw === 'familia' || raw === 'citas') return raw;
+  if (raw === 'familia' || raw === 'citas' || raw === 'pagos') return raw;
   return 'resumen';
 }
 

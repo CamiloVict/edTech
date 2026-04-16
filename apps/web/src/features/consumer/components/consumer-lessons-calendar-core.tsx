@@ -13,7 +13,10 @@ import { apptCalendarEventClasses } from '@/features/appointments/lib/appointmen
 
 function scheduledLessons(appointments: AppointmentRow[]) {
   return appointments.filter(
-    (a) => a.status === 'PENDING' || a.status === 'CONFIRMED',
+    (a) =>
+      a.status === 'PENDING' ||
+      a.status === 'CONFIRMED' ||
+      a.status === 'COMPLETED',
   );
 }
 

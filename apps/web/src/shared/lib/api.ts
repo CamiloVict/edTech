@@ -2,6 +2,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** Cuerpo JSON de error de la API (p. ej. código Stripe). */
+    public payload?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -35,7 +37,11 @@ async function parseResponse<T>(res: Response): Promise<T> {
         : Array.isArray((data as { message?: unknown })?.message)
           ? JSON.stringify((data as { message: unknown }).message)
           : text || res.statusText;
-    throw new ApiError(res.status, msg);
+    throw new ApiError(
+      res.status,
+      msg,
+      typeof data === 'object' && data !== null ? data : undefined,
+    );
   }
 
   return data as T;

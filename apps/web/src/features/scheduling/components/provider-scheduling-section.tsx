@@ -13,6 +13,7 @@ import {
   bootstrapQueryKey,
   fetchBootstrap,
 } from '@/features/bootstrap/api/bootstrap-api';
+import { ProviderStripeSetupCard } from '@/features/payments/components/provider-stripe-setup-card';
 import { AvailabilityFullCalendar } from '@/features/scheduling/components/availability-full-calendar';
 import {
   listProviderAppointments,
@@ -47,7 +48,20 @@ function blockRange(isoStart: string, isoEnd: string, isAllDay: boolean, tz: str
 }
 
 function queryErrorMessage(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
+  if (err instanceof ApiError) {
+    const p = err.payload;
+    if (
+      p &&
+      typeof p === 'object' &&
+      'code' in p &&
+      (p as { code?: string }).code === 'PAYMENT_REQUIRES_ACTION' &&
+      'message' in p &&
+      typeof (p as { message?: unknown }).message === 'string'
+    ) {
+      return (p as { message: string }).message;
+    }
+    return err.message;
+  }
   if (err instanceof Error) return err.message;
   return 'Error desconocido';
 }
@@ -177,6 +191,9 @@ export function ProviderSchedulingSection() {
 
   return (
     <div className="space-y-6">
+      {bootstrapQuery.data?.providerProfile?.needsStripeConnect ? (
+        <ProviderStripeSetupCard />
+      ) : null}
       {patchApptMut.isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
           <p className="font-semibold">No se pudo actualizar la cita</p>
@@ -502,7 +519,22 @@ export function ProviderSchedulingSection() {
                     {APPOINTMENT_STATUS_LABEL_ES[a.status]}
                   </span>
                 </span>
-                {a.status === 'CONFIRMED' ? (
+                {a.status === 'CONFIRMED' &&
+                new Date(a.endsAt).getTime() <= Date.now() ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="self-start text-xs"
+                    disabled={patchApptMut.isPending}
+                    onClick={() =>
+                      patchApptMut.mutate({ id: a.id, status: 'COMPLETED' })
+                    }
+                  >
+                    Marcar sesión terminada
+                  </Button>
+                ) : null}
+                {a.status === 'CONFIRMED' &&
+                new Date(a.endsAt).getTime() > Date.now() ? (
                   <Button
                     variant="ghost"
                     className="self-start text-xs text-red-800"

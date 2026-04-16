@@ -39,6 +39,7 @@ const OFFER_STATUS: Record<OfferStatus, string> = {
 const SESSION: Record<SessionStatus, string> = {
   PENDING: 'Pendiente',
   CONFIRMED: 'Confirmada',
+  COMPLETED: 'Sesión terminada',
   DECLINED: 'Rechazada',
   CANCELLED: 'Cancelada',
 };

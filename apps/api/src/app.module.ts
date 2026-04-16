@@ -8,6 +8,7 @@ import { ConsumerProfilesModule } from './consumer-profiles/consumer-profiles.mo
 import { DiscoverModule } from './discover/discover.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PaymentsModule } from './payments/payments.module';
 import { ProviderProfilesModule } from './provider-profiles/provider-profiles.module';
 import { ProvidersModule } from './providers/providers.module';
 import { UsersModule } from './users/users.module';
@@ -23,6 +24,7 @@ import { UsersModule } from './users/users.module';
     ConsumerProfilesModule,
     ProviderProfilesModule,
     AvailabilityModule,
+    PaymentsModule,
     AppointmentsModule,
     ProvidersModule,
   ],

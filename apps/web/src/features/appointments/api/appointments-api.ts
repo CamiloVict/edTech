@@ -1,8 +1,17 @@
 import { apiRequest } from '@/shared/lib/api';
 
+export type AppointmentPaymentStatus =
+  | 'NONE'
+  | 'REQUIRES_ACTION'
+  | 'AUTHORIZED'
+  | 'CAPTURED'
+  | 'CANCELED'
+  | 'FAILED';
+
 export type AppointmentStatus =
   | 'PENDING'
   | 'CONFIRMED'
+  | 'COMPLETED'
   | 'DECLINED'
   | 'CANCELLED_BY_FAMILY'
   | 'CANCELLED_BY_PROVIDER';
@@ -15,6 +24,8 @@ export type AppointmentRow = {
   startsAt: string;
   endsAt: string;
   status: AppointmentStatus;
+  quotedAmountMinor?: number | null;
+  quotedCurrency?: string | null;
   /** Presente tras migración; si falta, se trata como false. */
   requestsAlternativeSchedule?: boolean;
   noteFromFamily: string | null;
@@ -33,6 +44,13 @@ export type AppointmentRow = {
     city: string | null;
   };
   child: { id: string; firstName: string } | null;
+  payment?: {
+    id: string;
+    status: AppointmentPaymentStatus;
+    amountMinor: number;
+    currency: string;
+    applicationFeeMinor: number;
+  } | null;
 };
 
 export function listMyAppointments(getToken: () => Promise<string | null>) {

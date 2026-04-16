@@ -18,6 +18,7 @@ import {
   patchAppointment,
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
+import { ApiError } from '@/shared/lib/api';
 import {
   apptStatusBadgeClass,
   apptStatusCardClass,
@@ -98,7 +99,18 @@ function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }
     <>
       {patchMut.isError ? (
         <li className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-          {patchMut.error instanceof Error ? patchMut.error.message : 'No se pudo actualizar la cita.'}
+          {patchMut.error instanceof ApiError &&
+          patchMut.error.payload &&
+          typeof patchMut.error.payload === 'object' &&
+          patchMut.error.payload !== null &&
+          'code' in patchMut.error.payload &&
+          (patchMut.error.payload as { code?: string }).code ===
+            'PAYMENT_REQUIRES_ACTION'
+            ? (patchMut.error.payload as { message?: string }).message ??
+              'La familia debe completar el pago (3D Secure). Avísale que abra Mi espacio → Método de pago o espere la confirmación automática.'
+            : patchMut.error instanceof Error
+              ? patchMut.error.message
+              : 'No se pudo actualizar la cita.'}
         </li>
       ) : null}
       {sessions.map((s) => {
@@ -185,6 +197,11 @@ const GROWTH_CTAS: { href: string; label: string; body: string }[] = [
     href: '/dashboard/provider/agenda',
     label: 'Agenda y horarios',
     body: 'Publica ventanas para que las familias puedan reservar contigo.',
+  },
+  {
+    href: '/dashboard/provider/pagos-stripe',
+    label: 'Pagos Stripe',
+    body: 'Conecta tu cuenta para cobrar sesiones al marcarlas como terminadas.',
   },
   {
     href: '/profile/provider',

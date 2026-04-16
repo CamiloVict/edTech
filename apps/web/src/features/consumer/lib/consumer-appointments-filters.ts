@@ -3,6 +3,7 @@ import type { AppointmentRow } from '@/features/appointments/api/appointments-ap
 const RELEVANT_FOR_EXPLORE_BANNER = new Set<AppointmentRow['status']>([
   'PENDING',
   'CONFIRMED',
+  'COMPLETED',
   'DECLINED',
   'CANCELLED_BY_FAMILY',
   'CANCELLED_BY_PROVIDER',

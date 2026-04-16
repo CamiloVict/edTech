@@ -18,6 +18,7 @@ import {
 import { ConsumerFamilyForm } from '@/features/consumer/components/consumer-family-form';
 import { ConsumerLessonsCalendar } from '@/features/consumer/components/consumer-lessons-calendar';
 import { ConsumerUpcomingAppointmentsPanel } from '@/features/consumer/components/consumer-upcoming-appointments-panel';
+import { ConsumerPaymentMethodPanel } from '@/features/payments/components/consumer-payment-method-panel';
 import {
   consumerHubHref,
   parseConsumerHubSection,
@@ -38,6 +39,7 @@ const terminalStatuses = new Set([
   'DECLINED',
   'CANCELLED_BY_FAMILY',
   'CANCELLED_BY_PROVIDER',
+  'COMPLETED',
 ]);
 
 function formatApptRange(isoStart: string, isoEnd: string) {
@@ -69,6 +71,7 @@ const SECTION_LABELS: Record<ConsumerHubSection, string> = {
   resumen: 'Resumen',
   familia: 'Familia y datos',
   citas: 'Citas',
+  pagos: 'Método de pago',
 };
 
 function ConsumerHubContent() {
@@ -180,6 +183,7 @@ function ConsumerHubContent() {
     { href: '/planner', label: 'Planner educativo' },
     { href: '/explorar', label: 'Educadores' },
     { href: consumerHubHref('familia'), label: 'Familia y datos' },
+    { href: consumerHubHref('pagos'), label: 'Método de pago' },
   ];
 
   return (
@@ -225,6 +229,25 @@ function ConsumerHubContent() {
                 Editar datos de la familia
               </Button>
             </header>
+
+            {!(bootstrapQuery.data?.consumerProfile?.hasStripeCustomer ?? false) ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950 shadow-sm">
+                <p className="font-semibold">Añade un método de pago</p>
+                <p className="mt-1 leading-relaxed text-amber-950/90">
+                  Cuando un educador confirme una clase, autorizamos el importe en tu
+                  tarjeta y lo capturamos cuando marque la sesión como terminada. Sin
+                  tarjeta no podrá confirmar la reserva.
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="mt-3"
+                  onClick={() => setSeccion('pagos')}
+                >
+                  Ir a método de pago
+                </Button>
+              </div>
+            ) : null}
 
             <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
               <h2 className="text-base font-bold text-primary">
@@ -313,7 +336,7 @@ function ConsumerHubContent() {
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Naranja: pendiente de confirmación del educador. Verde: cita confirmada.
-                    Cambia a semana o lista para ver horarios con más detalle.
+                    Azul: sesión ya terminada. Cambia a semana o lista para ver horarios con más detalle.
                   </p>
                 </div>
                 <button
@@ -338,6 +361,13 @@ function ConsumerHubContent() {
                     />
                     Confirmada
                   </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className="inline-block size-3 shrink-0 rounded-sm border-2 border-[var(--appt-completed-border)] bg-[var(--appt-completed-bg)]"
+                      aria-hidden
+                    />
+                    Terminada
+                  </span>
                 </p>
                 {profile.children.length > 0 ? (
                   <p>
@@ -351,6 +381,33 @@ function ConsumerHubContent() {
               </div>
             </section>
           </>
+        ) : null}
+
+        {seccion === 'pagos' ? (
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="ghost"
+              className="-ml-2 text-sm text-muted-foreground"
+              onClick={() => setSeccion('resumen')}
+            >
+              ← Volver al resumen
+            </Button>
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+              <h2 className="text-base font-bold text-primary">Método de pago</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Pagos seguros con Stripe. Solo se cobra cuando un educador confirma
+                (autorización) y se finaliza el cargo al cerrar la sesión.
+              </p>
+              <div className="mt-5">
+                <ConsumerPaymentMethodPanel
+                  hasStripeCustomer={
+                    bootstrapQuery.data?.consumerProfile?.hasStripeCustomer ?? false
+                  }
+                />
+              </div>
+            </section>
+          </div>
         ) : null}
 
         {seccion === 'familia' ? (
@@ -410,6 +467,13 @@ function ConsumerHubContent() {
                       aria-hidden
                     />
                     Cerrada
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className="inline-block size-3 shrink-0 rounded-sm border-2 border-[var(--appt-completed-border)] bg-[var(--appt-completed-bg)]"
+                      aria-hidden
+                    />
+                    Terminada
                   </span>
                 </p>
                 {profile.children.length > 0 ? (

@@ -23,6 +23,7 @@ const TERMINAL = new Set<AppointmentRow['status']>([
   'DECLINED',
   'CANCELLED_BY_FAMILY',
   'CANCELLED_BY_PROVIDER',
+  'COMPLETED',
 ]);
 
 function defaultServiceMode(m: ServiceMode | null): ServiceMode {

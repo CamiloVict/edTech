@@ -56,7 +56,12 @@ export type EducatorAvailabilityBlock = {
   modeHint?: ServiceMode;
 };
 
-export type SessionStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED';
+export type SessionStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'COMPLETED'
+  | 'DECLINED'
+  | 'CANCELLED';
 
 export type EducatorSession = {
   id: string;

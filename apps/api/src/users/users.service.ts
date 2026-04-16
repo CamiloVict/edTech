@@ -169,6 +169,7 @@ export class UsersService {
             city: user.consumerProfile.city,
             relationshipToChild: user.consumerProfile.relationshipToChild,
             isProfileCompleted: user.consumerProfile.isProfileCompleted,
+            hasStripeCustomer: Boolean(user.consumerProfile.stripeCustomerId),
             children: user.consumerProfile.children.map((c) => ({
               id: c.id,
               firstName: c.firstName,
@@ -194,6 +195,13 @@ export class UsersService {
             isAvailable: user.providerProfile.isAvailable,
             availabilitySummary: user.providerProfile.availabilitySummary,
             kinds: user.providerProfile.kinds,
+            stripeConnectAccountId: user.providerProfile.stripeConnectAccountId,
+            stripeChargesEnabled: user.providerProfile.stripeChargesEnabled,
+            stripePayoutsEnabled: user.providerProfile.stripePayoutsEnabled,
+            needsStripeConnect:
+              !user.providerProfile.stripeConnectAccountId ||
+              !user.providerProfile.stripeChargesEnabled ||
+              !user.providerProfile.stripePayoutsEnabled,
           }
         : null,
     };
