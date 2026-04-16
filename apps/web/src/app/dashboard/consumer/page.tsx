@@ -9,7 +9,6 @@ import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import {
   listMyAppointments,
   patchAppointment,
-  type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
 import {
   bootstrapQueryKey,
