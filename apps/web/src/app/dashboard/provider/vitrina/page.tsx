@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useMemo } from 'react';
 
+import { listMyAvailabilityBlocks } from '@/features/availability/api/availability-api';
 import {
   bootstrapQueryKey,
   fetchBootstrap,
@@ -40,6 +41,12 @@ export default function ProviderVitrinaRoute() {
     enabled: isProvider,
   });
 
+  const blocksQuery = useQuery({
+    queryKey: ['availability', 'me', 'blocks'],
+    queryFn: () => listMyAvailabilityBlocks(getToken),
+    enabled: isProvider,
+  });
+
   const vitrinaProfile = useMemo(() => {
     const api = profileQuery.data;
     if (!api) return null;
@@ -58,9 +65,14 @@ export default function ProviderVitrinaRoute() {
     return buildProfileCompletionFromProvider(api);
   }, [profileQuery.data]);
 
-  if (bootstrapQuery.isLoading || profileQuery.isLoading || ratesQuery.isLoading) {
+  if (
+    bootstrapQuery.isLoading ||
+    profileQuery.isLoading ||
+    ratesQuery.isLoading ||
+    blocksQuery.isLoading
+  ) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-[var(--muted-foreground)]">
+      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
         Cargando vitrina…
       </div>
     );
@@ -77,13 +89,19 @@ export default function ProviderVitrinaRoute() {
     );
   }
 
+  const p = profileQuery.data;
+
   return (
     <EducatorVitrinaPage
       profile={vitrinaProfile}
       reviews={[]}
       badges={[]}
       completion={completion}
-      publicProfileId={profileQuery.data.id}
+      publicProfileId={p.id}
+      kinds={p.kinds}
+      rates={ratesQuery.data ?? []}
+      availabilityBlocks={blocksQuery.data ?? []}
+      isProfileCompleted={p.isProfileCompleted}
     />
   );
 }
