@@ -18,6 +18,10 @@ import {
   patchAppointment,
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
+import {
+  apptStatusBadgeClass,
+  apptStatusCardClass,
+} from '@/features/appointments/lib/appointment-status-ui';
 import { Button, buttonStyles } from '@/shared/components/ui/button';
 
 function Surface({
@@ -102,24 +106,18 @@ function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }
         return (
           <li
             key={s.id}
-            className={`rounded-xl border shadow-sm transition-shadow ${
-              pending
-                ? 'border-accent/50 bg-accent-soft/20 ring-1 ring-accent/25'
-                : 'border-border bg-card ring-1 ring-border/80'
-            }`}
+            className={`shadow-sm transition-shadow ${apptStatusCardClass(
+              pending ? 'PENDING' : 'CONFIRMED',
+            )}`}
           >
             <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {pending ? (
-                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                      Pendiente
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Confirmada
-                    </span>
-                  )}
+                  <span
+                    className={apptStatusBadgeClass(pending ? 'PENDING' : 'CONFIRMED')}
+                  >
+                    {pending ? 'Pendiente' : 'Confirmada'}
+                  </span>
                   {s.requestsAlternativeSchedule ? (
                     <span className="rounded-md border border-accent/40 bg-accent-soft/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                       Horario propuesto
@@ -151,7 +149,7 @@ function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }
                     <Button
                       type="button"
                       variant="primary"
-                      className="min-w-0 flex-1 px-3 py-1.5 text-xs bg-accent text-primary shadow-sm hover:bg-accent-hover sm:flex-initial sm:min-w-22"
+                      className="appt-btn-confirm-cta min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
                       disabled={patchMut.isPending}
                       onClick={() => patchMut.mutate({ id: s.id, status: 'CONFIRMED' })}
                     >

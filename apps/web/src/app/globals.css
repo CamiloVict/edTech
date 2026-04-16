@@ -19,6 +19,31 @@
   --border: #e6e8ec;
   --muted: #eef3f9;
   --muted-foreground: #5f6b7a;
+
+  /* Estados de cita (familias y educadores): pendiente / confirmada / cerrada */
+  --appt-pending-bg: #fff7ed;
+  --appt-pending-border: #fdba74;
+  --appt-pending-ring: rgba(251, 146, 60, 0.28);
+  --appt-pending-text: #9a3412;
+  --appt-pending-badge-bg: #ffedd5;
+  --appt-pending-badge-text: #c2410c;
+
+  --appt-confirmed-bg: #f0fdf4;
+  --appt-confirmed-border: #86efac;
+  --appt-confirmed-ring: rgba(34, 197, 94, 0.22);
+  --appt-confirmed-text: #166534;
+  --appt-confirmed-badge-bg: #dcfce7;
+  --appt-confirmed-badge-text: #15803d;
+
+  --appt-cancelled-bg: #fef2f2;
+  --appt-cancelled-border: #fca5a5;
+  --appt-cancelled-text: #991b1b;
+  --appt-cancelled-badge-bg: #fee2e2;
+  --appt-cancelled-badge-text: #b91c1c;
+
+  --appt-confirm-cta-bg: #16a34a;
+  --appt-confirm-cta-hover: #15803d;
+  --appt-confirm-cta-text: #ffffff;
 }
 
 @theme inline {
@@ -124,20 +149,20 @@ body {
   z-index: 1 !important;
 }
 
-/* Citas del proveedor superpuestas a las ventanas (mayor z-index) */
+/* Citas en calendario (proveedor): pendiente naranja / confirmada verde / cerrada rojo */
 .availability-fc .fc-event.provider-cal-appt-pending {
   border-radius: 0.375rem;
   font-weight: 700;
   font-size: 0.75rem;
   line-height: 1.2;
-  background-color: var(--accent-soft) !important;
-  border: 2px dashed var(--accent) !important;
-  color: var(--primary) !important;
+  background-color: var(--appt-pending-bg) !important;
+  border: 2px dashed var(--appt-pending-border) !important;
+  color: var(--appt-pending-text) !important;
   z-index: 4 !important;
 }
 
 .availability-fc .fc-event.provider-cal-appt-pending.provider-cal-appt-alt {
-  box-shadow: inset 0 0 0 1px rgb(46 196 182 / 0.35);
+  box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.25);
 }
 
 .availability-fc .fc-event.provider-cal-appt-confirmed {
@@ -145,9 +170,9 @@ body {
   font-weight: 700;
   font-size: 0.75rem;
   line-height: 1.2;
-  background-color: var(--accent) !important;
-  border-color: var(--accent-hover) !important;
-  color: var(--primary) !important;
+  background-color: var(--appt-confirmed-bg) !important;
+  border: 2px solid var(--appt-confirmed-border) !important;
+  color: var(--appt-confirmed-text) !important;
   z-index: 4 !important;
 }
 
@@ -156,11 +181,143 @@ body {
   font-weight: 600;
   font-size: 0.7rem;
   line-height: 1.2;
-  background-color: var(--muted) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--muted-foreground) !important;
-  opacity: 0.92;
+  background-color: var(--appt-cancelled-bg) !important;
+  border: 1px solid var(--appt-cancelled-border) !important;
+  color: var(--appt-cancelled-text) !important;
+  opacity: 0.95;
   z-index: 3 !important;
+}
+
+/* Calendario familia: mismo criterio de color por estado */
+.availability-fc .fc-event.appt-cal-pending {
+  border-radius: 0.375rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  background-color: var(--appt-pending-bg) !important;
+  border: 2px dashed var(--appt-pending-border) !important;
+  color: var(--appt-pending-text) !important;
+}
+
+.availability-fc .fc-event.appt-cal-confirmed {
+  border-radius: 0.375rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  background-color: var(--appt-confirmed-bg) !important;
+  border: 2px solid var(--appt-confirmed-border) !important;
+  color: var(--appt-confirmed-text) !important;
+}
+
+/* Tarjetas y badges reutilizables (hub consumidor, panel educador) */
+.appt-status-card {
+  border-radius: 0.75rem;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.appt-status-card-pending {
+  background-color: var(--appt-pending-bg);
+  border-color: var(--appt-pending-border);
+  box-shadow: 0 0 0 1px var(--appt-pending-ring);
+}
+
+.appt-status-card-confirmed {
+  background-color: var(--appt-confirmed-bg);
+  border-color: var(--appt-confirmed-border);
+  box-shadow: 0 0 0 1px var(--appt-confirmed-ring);
+}
+
+.appt-status-card-cancelled {
+  background-color: var(--appt-cancelled-bg);
+  border-color: var(--appt-cancelled-border);
+}
+
+.appt-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.appt-status-badge-pending {
+  background-color: var(--appt-pending-badge-bg);
+  color: var(--appt-pending-badge-text);
+}
+
+.appt-status-badge-confirmed {
+  background-color: var(--appt-confirmed-badge-bg);
+  color: var(--appt-confirmed-badge-text);
+}
+
+.appt-status-badge-cancelled {
+  background-color: var(--appt-cancelled-badge-bg);
+  color: var(--appt-cancelled-badge-text);
+}
+
+.appt-status-history {
+  border-left-width: 3px;
+  border-left-style: solid;
+  padding-left: 0.625rem;
+}
+
+.appt-status-history-pending {
+  border-left-color: var(--appt-pending-border);
+}
+
+.appt-status-history-confirmed {
+  border-left-color: var(--appt-confirmed-border);
+}
+
+.appt-status-history-cancelled {
+  border-left-color: var(--appt-cancelled-border);
+}
+
+/* Panel “solicitudes pendientes” (educador) */
+.appt-pending-panel {
+  border-color: var(--appt-pending-border);
+  background-color: var(--appt-pending-bg);
+  box-shadow: 0 0 0 1px var(--appt-pending-ring);
+}
+
+.appt-pending-panel-header {
+  border-bottom-color: var(--appt-pending-border);
+  background-color: color-mix(in srgb, var(--appt-pending-bg) 82%, white);
+}
+
+.appt-btn-confirm-cta {
+  background-color: var(--appt-confirm-cta-bg) !important;
+  color: var(--appt-confirm-cta-text) !important;
+  border-color: transparent !important;
+}
+
+.appt-btn-confirm-cta:hover {
+  background-color: var(--appt-confirm-cta-hover) !important;
+}
+
+/* Leyenda estado de citas (calendario familia / panel educador) */
+.appt-legend-swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.appt-legend-swatch-pending {
+  background-color: var(--appt-pending-border);
+}
+
+.appt-legend-swatch-confirmed {
+  background-color: var(--appt-confirmed-border);
+}
+
+.appt-legend-swatch-cancelled {
+  background-color: var(--appt-cancelled-border);
 }
 
 /* Citas por hijo (hub familia): misma variable en calendario y tarjetas */
@@ -182,11 +339,6 @@ body {
   font-weight: 600;
   font-size: 0.75rem;
   line-height: 1.2;
-}
-
-.availability-fc .fc-event.consumer-appt-cal-pending {
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
-  opacity: 0.95;
 }
 
 .availability-fc .fc-event.consumer-appt-tone-0 {

@@ -19,6 +19,11 @@ import {
   patchAppointment,
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
+import {
+  APPOINTMENT_STATUS_LABEL_ES,
+  apptStatusBadgeClass,
+  apptStatusCardClass,
+} from '@/features/appointments/lib/appointment-status-ui';
 import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input } from '@/shared/components/ui/field';
@@ -183,15 +188,15 @@ export function ProviderSchedulingSection() {
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border-2 border-accent/45 bg-accent-soft/20 shadow-sm ring-1 ring-accent/20">
-        <div className="border-b border-accent/25 bg-accent-soft/30 px-5 py-4 sm:px-6">
+      <section className="appt-pending-panel overflow-hidden rounded-2xl border-2 shadow-sm">
+        <div className="appt-pending-panel-header border-b px-5 py-4 sm:px-6">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-xl font-bold tracking-tight text-foreground">
               Solicitudes pendientes
             </h2>
             {!apptsQuery.isLoading && !apptsQuery.isError && pending.length > 0 ? (
               <span
-                className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-white tabular-nums"
+                className={`${apptStatusBadgeClass('PENDING')} px-2.5 py-0.5 text-xs tabular-nums`}
                 aria-label={`${pending.length} solicitudes pendientes`}
               >
                 {pending.length}
@@ -232,14 +237,12 @@ export function ProviderSchedulingSection() {
                 {pending.map((a) => (
                   <li
                     key={a.id}
-                    className="rounded-xl border border-accent/50 bg-card p-4 shadow-sm"
+                    className={`p-4 shadow-sm ${apptStatusCardClass('PENDING')}`}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                            Pendiente
-                          </span>
+                          <span className={apptStatusBadgeClass('PENDING')}>Pendiente</span>
                           {Boolean(a.requestsAlternativeSchedule) ? (
                             <span className="rounded-md border border-accent/40 bg-accent-soft/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                               Horario propuesto
@@ -269,7 +272,7 @@ export function ProviderSchedulingSection() {
                         <Button
                           type="button"
                           variant="primary"
-                          className="min-w-28 bg-accent px-4 py-2 text-sm text-primary shadow-sm hover:bg-accent-hover"
+                          className="appt-btn-confirm-cta min-w-28 px-4 py-2 text-sm shadow-sm"
                           disabled={patchApptMut.isPending}
                           onClick={() =>
                             patchApptMut.mutate({ id: a.id, status: 'CONFIRMED' })
@@ -330,18 +333,21 @@ export function ProviderSchedulingSection() {
             </li>
             <li className="flex items-center gap-1.5">
               <span
-                className="size-2.5 shrink-0 rounded-sm border-2 border-dashed border-accent bg-accent-soft"
+                className="appt-legend-swatch appt-legend-swatch-pending"
                 aria-hidden
               />
               <span>Solicitud pendiente</span>
             </li>
             <li className="flex items-center gap-1.5">
-              <span className="size-2.5 shrink-0 rounded-sm bg-accent" aria-hidden />
-              <span>Cita confirmada (tomada)</span>
+              <span
+                className="appt-legend-swatch appt-legend-swatch-confirmed"
+                aria-hidden
+              />
+              <span>Cita confirmada</span>
             </li>
             <li className="flex items-center gap-1.5">
               <span
-                className="size-2.5 shrink-0 rounded-sm border border-border bg-muted"
+                className="appt-legend-swatch appt-legend-swatch-cancelled"
                 aria-hidden
               />
               <span>Rechazada o cancelada</span>
@@ -479,7 +485,7 @@ export function ProviderSchedulingSection() {
             {other.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-col gap-1 rounded-lg border border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className={`flex flex-col gap-2 rounded-lg px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${apptStatusCardClass(a.status)}`}
               >
                 <span className="font-medium text-foreground">
                   <span className="text-primary">
@@ -488,8 +494,13 @@ export function ProviderSchedulingSection() {
                   {' · '}
                   {a.consumerProfile.fullName?.trim() || 'Familia'}
                 </span>
-                <span className="text-muted-foreground">
-                  {formatApptRange(a.startsAt, a.endsAt)} · {a.status}
+                <span className="flex flex-col gap-1 text-end text-muted-foreground sm:flex-row sm:items-center sm:gap-2">
+                  <span className="text-xs sm:text-sm">
+                    {formatApptRange(a.startsAt, a.endsAt)}
+                  </span>
+                  <span className={`${apptStatusBadgeClass(a.status)} self-end sm:self-auto`}>
+                    {APPOINTMENT_STATUS_LABEL_ES[a.status]}
+                  </span>
                 </span>
                 {a.status === 'CONFIRMED' ? (
                   <Button

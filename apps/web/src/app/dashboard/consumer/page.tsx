@@ -23,7 +23,12 @@ import {
   type ConsumerHubSection,
 } from '@/features/consumer/lib/consumer-hub';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
-import { appointmentChildToneClass } from '@/features/consumer/lib/child-appointment-tone';
+import {
+  APPOINTMENT_STATUS_LABEL_ES,
+  apptStatusBadgeClass,
+  apptStatusCardClass,
+  apptStatusHistoryClass,
+} from '@/features/appointments/lib/appointment-status-ui';
 import { pathAfterBootstrap } from '@/shared/lib/routing';
 import { AppHeader } from '@/shared/components/app-header';
 import { Button } from '@/shared/components/ui/button';
@@ -33,17 +38,6 @@ const terminalStatuses = new Set([
   'CANCELLED_BY_FAMILY',
   'CANCELLED_BY_PROVIDER',
 ]);
-
-function statusConsumerLabel(s: AppointmentRow['status']) {
-  const map: Record<AppointmentRow['status'], string> = {
-    PENDING: 'Pendiente de confirmación',
-    CONFIRMED: 'Confirmada',
-    DECLINED: 'Rechazada',
-    CANCELLED_BY_FAMILY: 'Cancelada por ti',
-    CANCELLED_BY_PROVIDER: 'Cancelada por el educador',
-  };
-  return map[s];
-}
 
 function formatApptRange(isoStart: string, isoEnd: string) {
   try {
@@ -317,13 +311,11 @@ function ConsumerHubContent() {
                   {upcoming.slice(0, 3).map((a) => (
                     <li
                       key={a.id}
-                      className={`rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm consumer-appt-card ${appointmentChildToneClass(a.childId)} ${a.status === 'PENDING' ? 'consumer-appt-card-pending' : ''}`}
+                      className={`px-4 py-3 text-sm ${apptStatusCardClass(a.status)}`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p
-                            className={`text-xs font-semibold consumer-appt-child-label ${appointmentChildToneClass(a.childId)}`}
-                          >
+                          <p className="text-xs font-semibold text-foreground">
                             Para {a.child?.firstName ?? '—'}
                           </p>
                           <p className="font-semibold text-foreground">
@@ -332,8 +324,10 @@ function ConsumerHubContent() {
                           <p className="mt-1 text-muted-foreground">
                             {formatApptRange(a.startsAt, a.endsAt)}
                           </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {statusConsumerLabel(a.status)}
+                          <p className="mt-1.5">
+                            <span className={apptStatusBadgeClass(a.status)}>
+                              {APPOINTMENT_STATUS_LABEL_ES[a.status]}
+                            </span>
                           </p>
                           {a.requestsAlternativeSchedule ? (
                             <p className="mt-1 text-xs font-medium text-violet-700">
@@ -371,9 +365,8 @@ function ConsumerHubContent() {
                     Calendario de lecciones
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Citas pendientes o confirmadas. Cada hijo tiene un color; las
-                    pendientes llevan un contorno claro. Cambia a semana o lista
-                    para ver horarios con más detalle.
+                    Naranja: pendiente de confirmación del educador. Verde: cita confirmada.
+                    Cambia a semana o lista para ver horarios con más detalle.
                   </p>
                 </div>
                 <button
@@ -384,25 +377,28 @@ function ConsumerHubContent() {
                   Gestionar citas
                 </button>
               </div>
-              {profile.children.length > 0 ? (
-                <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    Leyenda por hijo:
+              <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="font-medium text-foreground">Leyenda:</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="appt-legend-swatch appt-legend-swatch-pending" aria-hidden />
+                    Pendiente
                   </span>
-                  {profile.children.map((c) => (
+                  <span className="inline-flex items-center gap-1.5">
                     <span
-                      key={c.id}
-                      className="inline-flex items-center gap-1.5"
-                    >
-                      <span
-                        className={`consumer-appt-legend-dot ${appointmentChildToneClass(c.id)}`}
-                        aria-hidden
-                      />
-                      {c.firstName}
-                    </span>
-                  ))}
+                      className="appt-legend-swatch appt-legend-swatch-confirmed"
+                      aria-hidden
+                    />
+                    Confirmada
+                  </span>
                 </p>
-              ) : null}
+                {profile.children.length > 0 ? (
+                  <p>
+                    <span className="font-medium text-foreground">Hijos: </span>
+                    {profile.children.map((c) => c.firstName).join(', ')}
+                  </p>
+                ) : null}
+              </div>
               <div className="mt-4">
                 <ConsumerLessonsCalendar appointments={allAppts} />
               </div>
@@ -447,25 +443,35 @@ function ConsumerHubContent() {
                   Buscar educadores
                 </Link>
               </div>
-              {profile.children.length > 0 ? (
-                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    Color por hijo:
+              <div className="mt-2 space-y-2 text-xs text-muted-foreground">
+                <p className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="font-medium text-foreground">Estado:</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="appt-legend-swatch appt-legend-swatch-pending" aria-hidden />
+                    Pendiente
                   </span>
-                  {profile.children.map((c) => (
+                  <span className="inline-flex items-center gap-1.5">
                     <span
-                      key={c.id}
-                      className="inline-flex items-center gap-1.5"
-                    >
-                      <span
-                        className={`consumer-appt-legend-dot ${appointmentChildToneClass(c.id)}`}
-                        aria-hidden
-                      />
-                      {c.firstName}
-                    </span>
-                  ))}
+                      className="appt-legend-swatch appt-legend-swatch-confirmed"
+                      aria-hidden
+                    />
+                    Confirmada
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className="appt-legend-swatch appt-legend-swatch-cancelled"
+                      aria-hidden
+                    />
+                    Cerrada
+                  </span>
                 </p>
-              ) : null}
+                {profile.children.length > 0 ? (
+                  <p>
+                    <span className="font-medium text-foreground">Hijos: </span>
+                    {profile.children.map((c) => c.firstName).join(', ')}
+                  </p>
+                ) : null}
+              </div>
               {upcoming.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">
                   No tienes citas activas. Explora educadores y solicita una
@@ -476,13 +482,11 @@ function ConsumerHubContent() {
                   {upcoming.map((a) => (
                     <li
                       key={a.id}
-                      className={`rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm consumer-appt-card ${appointmentChildToneClass(a.childId)} ${a.status === 'PENDING' ? 'consumer-appt-card-pending' : ''}`}
+                      className={`px-4 py-3 text-sm ${apptStatusCardClass(a.status)}`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p
-                            className={`text-xs font-semibold consumer-appt-child-label ${appointmentChildToneClass(a.childId)}`}
-                          >
+                          <p className="text-xs font-semibold text-foreground">
                             Para {a.child?.firstName ?? '—'}
                           </p>
                           <p className="font-semibold text-foreground">
@@ -491,8 +495,10 @@ function ConsumerHubContent() {
                           <p className="mt-1 text-muted-foreground">
                             {formatApptRange(a.startsAt, a.endsAt)}
                           </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {statusConsumerLabel(a.status)}
+                          <p className="mt-1.5">
+                            <span className={apptStatusBadgeClass(a.status)}>
+                              {APPOINTMENT_STATUS_LABEL_ES[a.status]}
+                            </span>
                           </p>
                           {a.requestsAlternativeSchedule ? (
                             <p className="mt-1 text-xs font-medium text-violet-700">
@@ -530,20 +536,18 @@ function ConsumerHubContent() {
                   {history.map((a) => (
                     <li
                       key={a.id}
-                      className={`consumer-appt-history-row flex flex-wrap justify-between gap-2 border-b border-border py-2 last:border-0 ${appointmentChildToneClass(a.childId)}`}
+                      className={`flex flex-wrap justify-between gap-2 border-b border-border py-2 pl-2 last:border-0 ${apptStatusHistoryClass(a.status)}`}
                     >
                       <span className="font-medium text-foreground">
-                        <span
-                          className={`consumer-appt-child-label ${appointmentChildToneClass(a.childId)}`}
-                        >
-                          {a.child?.firstName ?? '—'}
-                        </span>
+                        {a.child?.firstName ?? '—'}
                         {' · '}
                         {a.providerProfile.fullName?.trim() || 'Educador'}
                       </span>
-                      <span className="text-xs">
-                        {formatApptRange(a.startsAt, a.endsAt)} ·{' '}
-                        {statusConsumerLabel(a.status)}
+                      <span className="flex flex-col items-end gap-1 text-end text-xs sm:flex-row sm:items-center sm:gap-2">
+                        <span>{formatApptRange(a.startsAt, a.endsAt)}</span>
+                        <span className={apptStatusBadgeClass(a.status)}>
+                          {APPOINTMENT_STATUS_LABEL_ES[a.status]}
+                        </span>
                       </span>
                     </li>
                   ))}
