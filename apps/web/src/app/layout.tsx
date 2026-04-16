@@ -44,9 +44,10 @@ export default function RootLayout({
       signUpFallbackRedirectUrl="/mi-espacio"
       afterSignOutUrl="/"
     >
-      <html lang="es">
+      <html lang="es" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
+          suppressHydrationWarning
         >
           <QueryProvider>{children}</QueryProvider>
         </body>

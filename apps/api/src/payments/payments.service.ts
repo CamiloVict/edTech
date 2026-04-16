@@ -30,6 +30,11 @@ function rangesOverlap(
   return aStart < bEnd && bStart < aEnd;
 }
 
+function isStripeConnectNotEnabledError(err: unknown): boolean {
+  if (!(err instanceof Stripe.errors.StripeInvalidRequestError)) return false;
+  return err.message.includes('signed up for Connect');
+}
+
 function applicationFeeMinor(amountMinor: number): number {
   const raw = process.env.STRIPE_PLATFORM_FEE_BPS ?? '1000';
   const bps = Number(raw);
@@ -219,35 +224,46 @@ export class PaymentsService {
     const country = (process.env.STRIPE_CONNECT_DEFAULT_COUNTRY ?? 'US').trim();
 
     let accountId = profile.stripeConnectAccountId;
-    if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: 'express',
-        country,
-        email: user.email,
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
-        metadata: {
-          providerProfileId: profile.id,
-          clerkUserId,
-        },
+    try {
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: 'express',
+          country,
+          email: user.email,
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+          metadata: {
+            providerProfileId: profile.id,
+            clerkUserId,
+          },
+        });
+        accountId = account.id;
+        await this.prisma.providerProfile.update({
+          where: { id: profile.id },
+          data: { stripeConnectAccountId: accountId },
+        });
+      }
+
+      const link = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+        type: 'account_onboarding',
       });
-      accountId = account.id;
-      await this.prisma.providerProfile.update({
-        where: { id: profile.id },
-        data: { stripeConnectAccountId: accountId },
-      });
+
+      return { url: link.url };
+    } catch (err: unknown) {
+      if (isStripeConnectNotEnabledError(err)) {
+        throw new BadRequestException(
+          'Stripe Connect no está activado en la cuenta Stripe del proyecto (modo test o live). ' +
+            'Quien administre Stripe debe abrir https://dashboard.stripe.com/connect y completar el alta de Connect; ' +
+            'luego podrás pulsar de nuevo «Continuar con Stripe».',
+        );
+      }
+      throw err;
     }
-
-    const link = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: refreshUrl,
-      return_url: returnUrl,
-      type: 'account_onboarding',
-    });
-
-    return { url: link.url };
   }
 
   /**
