@@ -1,4 +1,5 @@
 export {
+  buildActiveStudentsFromAppointments,
   buildEducatorDashboardSnapshot,
   buildProfileCompletionFromProvider,
   educatorProfileFromProvider,

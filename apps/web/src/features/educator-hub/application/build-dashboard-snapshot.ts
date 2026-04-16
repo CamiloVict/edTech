@@ -5,6 +5,8 @@ import type {
   EducatorDashboardSnapshot,
   EducatorProfile,
   EducatorSession,
+  EducatorStudent,
+  FamilyRelationship,
   ProfileCompletionItem,
   ServiceMode,
 } from '../domain/types';
@@ -197,6 +199,115 @@ function sessionsStartingThisWeek(
 }
 
 /** Suma horas de bloques que intersectan los próximos 7 días (aprox.). */
+function studentGroupKey(a: AppointmentRow): string {
+  if (a.childId) return `child:${a.childId}`;
+  return `consumer:${a.consumerProfileId}:no-child`;
+}
+
+function parseMs(iso: string): number {
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? NaN : t;
+}
+
+/**
+ * Alumnos/as deduplicados a partir de citas confirmadas (mismo hijo o misma familia sin hijo en dato).
+ */
+export function buildActiveStudentsFromAppointments(
+  appointments: AppointmentRow[],
+): EducatorStudent[] {
+  const now = Date.now();
+  const confirmed = appointments.filter((a) => a.status === 'CONFIRMED');
+  const byKey = new Map<string, AppointmentRow[]>();
+  for (const a of confirmed) {
+    const k = studentGroupKey(a);
+    const arr = byKey.get(k) ?? [];
+    arr.push(a);
+    byKey.set(k, arr);
+  }
+
+  const relOther: FamilyRelationship = 'OTHER';
+  const students: EducatorStudent[] = [];
+
+  for (const appts of byKey.values()) {
+    appts.sort(
+      (x, y) => parseMs(x.startsAt) - parseMs(y.startsAt),
+    );
+    const first = appts[0]!;
+    const child = first.child;
+    const fam = first.consumerProfile.fullName?.trim() || 'Familia';
+    const childFirst = child?.firstName?.trim() || 'Alumno/a';
+    const id = child?.id ?? `c:${first.consumerProfileId}:sin-hijo`;
+
+    const past = appts.filter((a) => {
+      const e = parseMs(a.endsAt);
+      return !Number.isNaN(e) && e <= now;
+    });
+    const future = appts.filter((a) => {
+      const s = parseMs(a.startsAt);
+      return !Number.isNaN(s) && s >= now;
+    });
+
+    const lastPast =
+      past.length === 0
+        ? null
+        : past.reduce((max, a) =>
+            parseMs(a.endsAt) > parseMs(max.endsAt) ? a : max,
+          past[0]!);
+    const lastSessionAt = lastPast?.endsAt ?? null;
+
+    const nextFuture =
+      future.length === 0
+        ? null
+        : future.reduce((min, a) =>
+            parseMs(a.startsAt) < parseMs(min.startsAt) ? a : min,
+          future[0]!);
+    const nextSessionAt = nextFuture?.startsAt ?? null;
+
+    const sessionsCount = appts.length;
+    const phone = first.consumerProfile.phone?.trim();
+    const contactEmail = phone ? `Tel. ${phone}` : '—';
+
+    const lastEnds = lastSessionAt ? parseMs(lastSessionAt) : NaN;
+    const active =
+      nextSessionAt != null ||
+      (!Number.isNaN(lastEnds) && now - lastEnds < 180 * 86400000);
+
+    students.push({
+      id,
+      childFirstName: childFirst,
+      childAgeYears: 0,
+      birthYear: 0,
+      developmentStageLabel: 'Seguimiento por citas',
+      familyName: fam,
+      contactEmail,
+      relationship: relOther,
+      learningGoals: [],
+      interests: [],
+      active,
+      lastSessionAt,
+      nextSessionAt,
+      sessionsCount,
+      privateNotes: '',
+      progressSummary:
+        sessionsCount === 1
+          ? 'Una cita confirmada con esta familia.'
+          : `${sessionsCount} citas confirmadas con esta familia.`,
+      roadmapId: null,
+    });
+  }
+
+  students.sort((a, b) => {
+    if (a.nextSessionAt && b.nextSessionAt) {
+      return parseMs(a.nextSessionAt) - parseMs(b.nextSessionAt);
+    }
+    if (a.nextSessionAt) return -1;
+    if (b.nextSessionAt) return 1;
+    return a.familyName.localeCompare(b.familyName, 'es');
+  });
+
+  return students;
+}
+
 function openHoursNextSevenDays(
   blocks: { startsAt: string; endsAt: string }[],
   now: Date,
@@ -252,7 +363,7 @@ export function buildEducatorDashboardSnapshot(
     },
     upcomingSessions: sessions,
     leads: [],
-    activeStudents: [],
+    activeStudents: buildActiveStudentsFromAppointments(input.appointments),
     topOffers: [],
     recentReviews: [],
     insights: [],

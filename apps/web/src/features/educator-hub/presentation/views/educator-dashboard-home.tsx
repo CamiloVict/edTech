@@ -370,7 +370,8 @@ export function EducatorDashboardHome({
           <ul className="mt-4 space-y-3">
             {activeStudents.length === 0 ? (
               <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
-                El listado de estudiantes conectado a citas reales llegará en una próxima versión.
+                Nadie con cita confirmada todavía. Confirma solicitudes en Agenda
+                para ver familias aquí.
               </li>
             ) : null}
             {activeStudents.map((s) => (
@@ -380,7 +381,8 @@ export function EducatorDashboardHome({
                   className="block rounded-xl border border-[var(--border)] p-4 transition-colors hover:border-[var(--accent)]"
                 >
                   <p className="font-medium text-[var(--foreground)]">
-                    {s.childFirstName} · {s.childAgeYears} años
+                    {s.childFirstName}
+                    {s.childAgeYears > 0 ? ` · ${s.childAgeYears} años` : ''}
                   </p>
                   <p className="text-sm text-[var(--muted-foreground)]">{s.familyName}</p>
                   <p className="mt-2 line-clamp-2 text-xs text-[var(--muted-foreground)]">{s.progressSummary}</p>

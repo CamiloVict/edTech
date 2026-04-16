@@ -24,8 +24,8 @@ export function EducatorStudentsPage({ students }: { students: EducatorStudent[]
 
       {students.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-6 py-10 text-center text-sm text-[var(--muted-foreground)]">
-          Cuando conectemos el CRM de estudiantes a tus citas, verás aquí a cada
-          niño o niña con su familia y objetivos.
+          Aún no hay alumnos o alumnas con citas confirmadas. Cuando confirmes una
+          reserva en Agenda, aparecerán aquí agrupados por niño o niña.
         </p>
       ) : (
       <ul className="grid gap-4 sm:grid-cols-2">
@@ -39,7 +39,10 @@ export function EducatorStudentsPage({ students }: { students: EducatorStudent[]
                 <div>
                   <p className="text-lg font-semibold text-[var(--foreground)]">{s.childFirstName}</p>
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    {s.childAgeYears} años · {s.developmentStageLabel}
+                    {s.childAgeYears > 0
+                      ? `${s.childAgeYears} años`
+                      : 'Edad no indicada'}{' '}
+                    · {s.developmentStageLabel}
                   </p>
                 </div>
                 <span
