@@ -2,7 +2,7 @@
 
 import { useAuth } from '@clerk/nextjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   createAvailabilityBlock,
@@ -19,11 +19,16 @@ import {
   patchAppointment,
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
+import { PostSessionReviewModal } from '@/features/appointments/components/post-session-review-modal';
 import {
   APPOINTMENT_STATUS_LABEL_ES,
   apptStatusBadgeClass,
   apptStatusCardClass,
 } from '@/features/appointments/lib/appointment-status-ui';
+import {
+  appointmentNeedsReviewPrompt,
+  appointmentReviewEligible,
+} from '@/features/appointments/lib/post-session-review-prompt';
 import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input } from '@/shared/components/ui/field';
@@ -113,6 +118,8 @@ export function ProviderSchedulingSection() {
     },
   });
 
+  const [reviewModalApptId, setReviewModalApptId] = useState<string | null>(null);
+
   const patchApptMut = useMutation({
     mutationFn: ({
       id,
@@ -121,10 +128,42 @@ export function ProviderSchedulingSection() {
       id: string;
       status: AppointmentRow['status'];
     }) => patchAppointment(getToken, id, { status }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+      if (data.status === 'COMPLETED') {
+        setReviewModalApptId(data.id);
+      }
     },
   });
+
+  const appointmentRows = useMemo(
+    () => apptsQuery.data ?? [],
+    [apptsQuery.data],
+  );
+
+  const eligibleProviderReviews = useMemo(
+    () =>
+      appointmentRows
+        .filter((a) => appointmentReviewEligible(a, 'PROVIDER'))
+        .sort(
+          (x, y) =>
+            new Date(y.endsAt).getTime() - new Date(x.endsAt).getTime(),
+        ),
+    [appointmentRows],
+  );
+
+  useEffect(() => {
+    if (reviewModalApptId != null) return;
+    const next = eligibleProviderReviews.find((a) =>
+      appointmentNeedsReviewPrompt(a, 'PROVIDER'),
+    );
+    if (next) setReviewModalApptId(next.id);
+  }, [eligibleProviderReviews, reviewModalApptId]);
+
+  const reviewModalAppointment = useMemo(
+    () => appointmentRows.find((a) => a.id === reviewModalApptId) ?? null,
+    [appointmentRows, reviewModalApptId],
+  );
 
   const pending = useMemo(
     () =>
@@ -138,10 +177,7 @@ export function ProviderSchedulingSection() {
     [apptsQuery.data],
   );
 
-  const calendarAppointments = useMemo(
-    () => apptsQuery.data ?? [],
-    [apptsQuery.data],
-  );
+  const calendarAppointments = appointmentRows;
 
   if (bootstrapQuery.isLoading) {
     return (
@@ -503,25 +539,54 @@ export function ProviderSchedulingSection() {
                   </span>
                 </span>
                 {a.status === 'CONFIRMED' ? (
-                  <Button
-                    variant="ghost"
-                    className="self-start text-xs text-red-800"
-                    disabled={patchApptMut.isPending}
-                    onClick={() =>
-                      patchApptMut.mutate({
-                        id: a.id,
-                        status: 'CANCELLED_BY_PROVIDER',
-                      })
-                    }
-                  >
-                    Cancelar cita
-                  </Button>
+                  <div className="flex flex-col gap-2 self-start">
+                    {new Date(a.endsAt).getTime() <= Date.now() ? (
+                      <Button
+                        variant="primary"
+                        className="text-xs"
+                        disabled={patchApptMut.isPending}
+                        onClick={() =>
+                          patchApptMut.mutate({
+                            id: a.id,
+                            status: 'COMPLETED',
+                          })
+                        }
+                      >
+                        {patchApptMut.isPending ? '…' : 'Marcar como completada'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        className="text-xs text-red-800"
+                        disabled={patchApptMut.isPending}
+                        onClick={() =>
+                          patchApptMut.mutate({
+                            id: a.id,
+                            status: 'CANCELLED_BY_PROVIDER',
+                          })
+                        }
+                      >
+                        Cancelar cita
+                      </Button>
+                    )}
+                  </div>
                 ) : null}
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <PostSessionReviewModal
+        open={reviewModalApptId != null}
+        appointment={reviewModalAppointment}
+        role="PROVIDER"
+        getToken={getToken}
+        onClose={() => setReviewModalApptId(null)}
+        onUpdated={() => {
+          qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+        }}
+      />
     </div>
   );
 }

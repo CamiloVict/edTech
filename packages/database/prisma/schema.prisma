@@ -55,6 +55,13 @@ enum AppointmentStatus {
   DECLINED
   CANCELLED_BY_FAMILY
   CANCELLED_BY_PROVIDER
+  COMPLETED
+}
+
+/// Quien escribe la reseña vinculada a una cita completada.
+enum AppointmentReviewAuthor {
+  CONSUMER
+  PROVIDER
 }
 
 /// Cómo se realiza una cita concreta (p. ej. educador híbrido: la familia elige presencial vs en línea).
@@ -191,13 +198,33 @@ model Appointment {
   attendanceMode      AppointmentAttendance? @map("attendance_mode")
   /// Para sesión presencial: si el encuentro es en casa de la familia o en el espacio del educador.
   inPersonVenueHost   InPersonVenueHost  @default(CONSUMER) @map("in_person_venue_host")
+  /// Veces que la familia cerró el aviso de reseña sin enviar (máx. 2 en servidor: primera + un recordatorio).
+  consumerReviewPromptDismissals Int @default(0) @map("consumer_review_prompt_dismissals")
+  /// Veces que el educador cerró el aviso de reseña sin enviar (máx. 2).
+  providerReviewPromptDismissals Int @default(0) @map("provider_review_prompt_dismissals")
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  reviews             AppointmentReview[]
 
   @@index([providerProfileId, startsAt])
   @@index([consumerProfileId, startsAt])
   @@index([status])
   @@map("appointments")
+}
+
+model AppointmentReview {
+  id              String                   @id @default(cuid())
+  appointmentId   String                   @map("appointment_id")
+  appointment     Appointment              @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  authorRole      AppointmentReviewAuthor  @map("author_role")
+  stars           Int
+  comment         String?
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  @@unique([appointmentId, authorRole])
+  @@index([appointmentId])
+  @@map("appointment_reviews")
 }
 
 model Child {

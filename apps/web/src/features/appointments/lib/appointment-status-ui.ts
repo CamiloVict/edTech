@@ -8,12 +8,14 @@ export const APPOINTMENT_STATUS_LABEL_ES: Record<AppointmentStatus, string> = {
   DECLINED: 'Rechazada',
   CANCELLED_BY_FAMILY: 'Cancelada (familia)',
   CANCELLED_BY_PROVIDER: 'Cancelada (educador)',
+  COMPLETED: 'Completada',
 };
 
 /** Tarjetas / filas con borde y fondo suave según estado. */
 export function apptStatusCardClass(status: AppointmentStatus): string {
   if (status === 'PENDING') return 'appt-status-card appt-status-card-pending';
   if (status === 'CONFIRMED') return 'appt-status-card appt-status-card-confirmed';
+  if (status === 'COMPLETED') return 'appt-status-card appt-status-card-confirmed';
   return 'appt-status-card appt-status-card-cancelled';
 }
 
@@ -21,6 +23,7 @@ export function apptStatusCardClass(status: AppointmentStatus): string {
 export function apptStatusHistoryClass(status: AppointmentStatus): string {
   if (status === 'PENDING') return 'appt-status-history appt-status-history-pending';
   if (status === 'CONFIRMED') return 'appt-status-history appt-status-history-confirmed';
+  if (status === 'COMPLETED') return 'appt-status-history appt-status-history-confirmed';
   return 'appt-status-history appt-status-history-cancelled';
 }
 
@@ -28,6 +31,7 @@ export function apptStatusHistoryClass(status: AppointmentStatus): string {
 export function apptStatusBadgeClass(status: AppointmentStatus): string {
   if (status === 'PENDING') return 'appt-status-badge appt-status-badge-pending';
   if (status === 'CONFIRMED') return 'appt-status-badge appt-status-badge-confirmed';
+  if (status === 'COMPLETED') return 'appt-status-badge appt-status-badge-confirmed';
   return 'appt-status-badge appt-status-badge-cancelled';
 }
 
@@ -35,7 +39,9 @@ export function apptStatusBadgeClass(status: AppointmentStatus): string {
 export function apptCalendarEventClasses(status: AppointmentStatus): string[] {
   let cal = 'appt-cal-confirmed';
   if (status === 'PENDING') cal = 'appt-cal-pending';
-  else if (
+  else if (status === 'COMPLETED') {
+    cal = 'appt-cal-confirmed';
+  } else if (
     status === 'DECLINED' ||
     status === 'CANCELLED_BY_FAMILY' ||
     status === 'CANCELLED_BY_PROVIDER'

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
 
 import { CurrentClerkUser } from '../auth/current-clerk-user.decorator';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { CreateAppointmentReviewDto } from './dto/create-appointment-review.dto';
 import { PatchAppointmentDto } from './dto/patch-appointment.dto';
 
 @Controller('appointments')
@@ -25,6 +26,25 @@ export class AppointmentsController {
     @Body() dto: CreateAppointmentDto,
   ) {
     return this.appointments.create(clerk.clerkUserId, dto);
+  }
+
+  @Post(':appointmentId/review')
+  @HttpCode(200)
+  submitReview(
+    @CurrentClerkUser() clerk: { clerkUserId: string },
+    @Param('appointmentId') appointmentId: string,
+    @Body() dto: CreateAppointmentReviewDto,
+  ) {
+    return this.appointments.submitReview(clerk.clerkUserId, appointmentId, dto);
+  }
+
+  @Post(':appointmentId/review-prompt-dismiss')
+  @HttpCode(200)
+  dismissReviewPrompt(
+    @CurrentClerkUser() clerk: { clerkUserId: string },
+    @Param('appointmentId') appointmentId: string,
+  ) {
+    return this.appointments.dismissReviewPrompt(clerk.clerkUserId, appointmentId);
   }
 
   @Patch(':appointmentId')

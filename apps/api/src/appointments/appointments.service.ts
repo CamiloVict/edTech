@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   AppointmentAttendance,
+  AppointmentReviewAuthor,
   AppointmentStatus,
   InPersonVenueHost,
   Prisma,
@@ -21,6 +22,7 @@ import {
   utcMaxInstantForAlternativeRequest,
 } from './custom-alternative-limits';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { CreateAppointmentReviewDto } from './dto/create-appointment-review.dto';
 import { PatchAppointmentDto } from './dto/patch-appointment.dto';
 
 function rangesOverlap(
@@ -106,6 +108,13 @@ export class AppointmentsService {
       },
       child: {
         select: { id: true, firstName: true },
+      },
+      reviews: {
+        select: {
+          authorRole: true,
+          stars: true,
+          comment: true,
+        },
       },
     };
   }
@@ -353,13 +362,32 @@ export class AppointmentsService {
         });
       }
 
+      if (next === AppointmentStatus.COMPLETED) {
+        if (appt.status !== AppointmentStatus.CONFIRMED) {
+          throw new BadRequestException(
+            'Solo se pueden marcar como completadas las citas confirmadas.',
+          );
+        }
+        const now = new Date();
+        if (appt.endsAt.getTime() > now.getTime()) {
+          throw new BadRequestException(
+            'Solo puedes marcar como completada la sesión cuando haya pasado la hora de fin.',
+          );
+        }
+        return this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { status: AppointmentStatus.COMPLETED, ...logistics },
+          include: this.appointmentInclude(),
+        });
+      }
+
       if (
         next !== AppointmentStatus.CONFIRMED &&
         next !== AppointmentStatus.DECLINED &&
         next !== AppointmentStatus.CANCELLED_BY_PROVIDER
       ) {
         throw new BadRequestException(
-          'Estado no válido: como educador puedes confirmar, rechazar o cancelar citas.',
+          'Estado no válido: como educador puedes confirmar, rechazar, cancelar o completar citas.',
         );
       }
 
@@ -425,5 +453,167 @@ export class AppointmentsService {
     throw new ForbiddenException(
       'Tu cuenta no tiene un rol que pueda modificar esta cita (se requiere familia o educador).',
     );
+  }
+
+  async submitReview(
+    clerkUserId: string,
+    appointmentId: string,
+    dto: CreateAppointmentReviewDto,
+  ) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { reviews: true },
+    });
+    if (!appt) {
+      throw new NotFoundException('Appointment not found');
+    }
+    if (appt.status !== AppointmentStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Solo puedes valorar citas ya marcadas como completadas.',
+      );
+    }
+
+    const user = await this.users.findByClerkOrThrow(clerkUserId);
+    let authorRole: AppointmentReviewAuthor;
+    if (user.role === UserRole.CONSUMER) {
+      const profile = user.consumerProfile;
+      if (!profile || appt.consumerProfileId !== profile.id) {
+        throw new ForbiddenException('Not your appointment');
+      }
+      authorRole = AppointmentReviewAuthor.CONSUMER;
+    } else if (user.role === UserRole.PROVIDER) {
+      const profile = user.providerProfile;
+      if (!profile || appt.providerProfileId !== profile.id) {
+        throw new ForbiddenException('Not your appointment');
+      }
+      authorRole = AppointmentReviewAuthor.PROVIDER;
+    } else {
+      throw new ForbiddenException('Rol no válido');
+    }
+
+    if (appt.reviews.some((r) => r.authorRole === authorRole)) {
+      throw new BadRequestException('Ya enviaste tu valoración para esta cita.');
+    }
+
+    const commentTrim = dto.comment?.trim() ?? '';
+    const comment = commentTrim.length > 0 ? commentTrim : null;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.appointmentReview.create({
+        data: {
+          appointmentId,
+          authorRole,
+          stars: dto.stars,
+          comment,
+        },
+      });
+      if (authorRole === AppointmentReviewAuthor.CONSUMER) {
+        await this.recalcProviderRatingFromConsumerReviews(
+          tx,
+          appt.providerProfileId,
+        );
+      }
+      return tx.appointment.findUniqueOrThrow({
+        where: { id: appointmentId },
+        include: this.appointmentInclude(),
+      });
+    });
+  }
+
+  private async recalcProviderRatingFromConsumerReviews(
+    tx: Prisma.TransactionClient,
+    providerProfileId: string,
+  ) {
+    const agg = await tx.appointmentReview.aggregate({
+      where: {
+        authorRole: AppointmentReviewAuthor.CONSUMER,
+        appointment: { providerProfileId },
+      },
+      _avg: { stars: true },
+      _count: { _all: true },
+    });
+    const count = agg._count._all;
+    const avgStars =
+      count === 0 || agg._avg.stars == null ? 0 : Number(agg._avg.stars);
+    const clamped = Math.min(5, Math.max(0, avgStars));
+    await tx.providerProfile.update({
+      where: { id: providerProfileId },
+      data: {
+        averageRating: new Prisma.Decimal(clamped.toFixed(2)),
+        ratingCount: count,
+      },
+    });
+  }
+
+  async dismissReviewPrompt(clerkUserId: string, appointmentId: string) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { reviews: true },
+    });
+    if (!appt) {
+      throw new NotFoundException('Appointment not found');
+    }
+    if (appt.status !== AppointmentStatus.COMPLETED) {
+      throw new BadRequestException('Acción no aplicable a esta cita.');
+    }
+
+    const user = await this.users.findByClerkOrThrow(clerkUserId);
+    if (user.role === UserRole.CONSUMER) {
+      const profile = user.consumerProfile;
+      if (!profile || appt.consumerProfileId !== profile.id) {
+        throw new ForbiddenException('Not your appointment');
+      }
+      if (
+        appt.reviews.some((r) => r.authorRole === AppointmentReviewAuthor.CONSUMER)
+      ) {
+        return this.prisma.appointment.findUniqueOrThrow({
+          where: { id: appointmentId },
+          include: this.appointmentInclude(),
+        });
+      }
+      if (appt.consumerReviewPromptDismissals >= 2) {
+        return this.prisma.appointment.findUniqueOrThrow({
+          where: { id: appointmentId },
+          include: this.appointmentInclude(),
+        });
+      }
+      return this.prisma.appointment.update({
+        where: { id: appointmentId },
+        data: {
+          consumerReviewPromptDismissals: { increment: 1 },
+        },
+        include: this.appointmentInclude(),
+      });
+    }
+
+    if (user.role === UserRole.PROVIDER) {
+      const profile = user.providerProfile;
+      if (!profile || appt.providerProfileId !== profile.id) {
+        throw new ForbiddenException('Not your appointment');
+      }
+      if (
+        appt.reviews.some((r) => r.authorRole === AppointmentReviewAuthor.PROVIDER)
+      ) {
+        return this.prisma.appointment.findUniqueOrThrow({
+          where: { id: appointmentId },
+          include: this.appointmentInclude(),
+        });
+      }
+      if (appt.providerReviewPromptDismissals >= 2) {
+        return this.prisma.appointment.findUniqueOrThrow({
+          where: { id: appointmentId },
+          include: this.appointmentInclude(),
+        });
+      }
+      return this.prisma.appointment.update({
+        where: { id: appointmentId },
+        data: {
+          providerReviewPromptDismissals: { increment: 1 },
+        },
+        include: this.appointmentInclude(),
+      });
+    }
+
+    throw new ForbiddenException('Rol no válido');
   }
 }

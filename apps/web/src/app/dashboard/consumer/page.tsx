@@ -8,6 +8,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { listMyAppointments, patchAppointment } from '@/features/appointments/api/appointments-api';
 import { AppointmentDetailModal } from '@/features/appointments/components/appointment-detail-modal';
+import { PostSessionReviewModal } from '@/features/appointments/components/post-session-review-modal';
 import {
   bootstrapQueryKey,
   fetchBootstrap,
@@ -27,6 +28,10 @@ import {
   apptStatusCardClass,
   apptStatusHistoryClass,
 } from '@/features/appointments/lib/appointment-status-ui';
+import {
+  appointmentNeedsReviewPrompt,
+  appointmentReviewEligible,
+} from '@/features/appointments/lib/post-session-review-prompt';
 import { pathAfterBootstrap } from '@/shared/lib/routing';
 import { AppHeader } from '@/shared/components/app-header';
 import { Button } from '@/shared/components/ui/button';
@@ -75,6 +80,7 @@ function ConsumerHubContent() {
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const [detailApptId, setDetailApptId] = useState<string | null>(null);
+  const [consumerReviewApptId, setConsumerReviewApptId] = useState<string | null>(null);
 
   const seccion = parseConsumerHubSection(searchParams.get('seccion'));
 
@@ -140,6 +146,30 @@ function ConsumerHubContent() {
     [appointmentsList, detailApptId],
   );
 
+  const eligibleConsumerReviews = useMemo(
+    () =>
+      appointmentsList
+        .filter((a) => appointmentReviewEligible(a, 'CONSUMER'))
+        .sort(
+          (x, y) =>
+            new Date(y.endsAt).getTime() - new Date(x.endsAt).getTime(),
+        ),
+    [appointmentsList],
+  );
+
+  useEffect(() => {
+    if (consumerReviewApptId != null) return;
+    const next = eligibleConsumerReviews.find((a) =>
+      appointmentNeedsReviewPrompt(a, 'CONSUMER'),
+    );
+    if (next) setConsumerReviewApptId(next.id);
+  }, [eligibleConsumerReviews, consumerReviewApptId]);
+
+  const consumerReviewAppointment = useMemo(
+    () => appointmentsList.find((a) => a.id === consumerReviewApptId) ?? null,
+    [appointmentsList, consumerReviewApptId],
+  );
+
   if (
     bootstrapQuery.isLoading ||
     profileQuery.isLoading ||
@@ -196,6 +226,16 @@ function ConsumerHubContent() {
         onClose={() => setDetailApptId(null)}
         appointment={detailAppointment}
         viewerRole="CONSUMER"
+      />
+      <PostSessionReviewModal
+        open={consumerReviewApptId != null}
+        appointment={consumerReviewAppointment}
+        role="CONSUMER"
+        getToken={getToken}
+        onClose={() => setConsumerReviewApptId(null)}
+        onUpdated={() => {
+          qc.invalidateQueries({ queryKey: ['appointments', 'me'] });
+        }}
       />
       <AppHeader logoHref="/explorar" pageLabel="Familia" links={hubLinks} />
       <main className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">

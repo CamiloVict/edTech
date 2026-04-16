@@ -6,6 +6,7 @@ const RELEVANT_FOR_EXPLORE_BANNER = new Set<AppointmentRow['status']>([
   'DECLINED',
   'CANCELLED_BY_FAMILY',
   'CANCELLED_BY_PROVIDER',
+  'COMPLETED',
 ]);
 
 const MS_7D = 7 * 86400000;

@@ -3,7 +3,7 @@
 import { useAuth } from '@clerk/nextjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type {
   EducatorDashboardSnapshot,
@@ -20,7 +20,12 @@ import {
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
 import { AppointmentDetailModal } from '@/features/appointments/components/appointment-detail-modal';
+import { PostSessionReviewModal } from '@/features/appointments/components/post-session-review-modal';
 import { appointmentShowMeetingLink } from '@/features/appointments/lib/appointment-address';
+import {
+  appointmentNeedsReviewPrompt,
+  appointmentReviewEligible,
+} from '@/features/appointments/lib/post-session-review-prompt';
 import {
   APPOINTMENT_STATUS_LABEL_ES,
   apptStatusBadgeClass,
@@ -98,6 +103,43 @@ function DashboardUpcomingSessions({
     },
   });
 
+  const [reviewModalApptId, setReviewModalApptId] = useState<string | null>(null);
+
+  const completeMut = useMutation({
+    mutationFn: (payload: { id: string; status: 'COMPLETED' }) => {
+      const { id, ...body } = payload;
+      return patchAppointment(getToken, id, body);
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+      setReviewModalApptId(data.id);
+    },
+  });
+
+  const eligibleProviderReviews = useMemo(
+    () =>
+      appointmentRows
+        .filter((a) => appointmentReviewEligible(a, 'PROVIDER'))
+        .sort(
+          (x, y) =>
+            new Date(y.endsAt).getTime() - new Date(x.endsAt).getTime(),
+        ),
+    [appointmentRows],
+  );
+
+  useEffect(() => {
+    if (reviewModalApptId != null) return;
+    const next = eligibleProviderReviews.find((a) =>
+      appointmentNeedsReviewPrompt(a, 'PROVIDER'),
+    );
+    if (next) setReviewModalApptId(next.id);
+  }, [eligibleProviderReviews, reviewModalApptId]);
+
+  const reviewModalAppointment = useMemo(
+    () => appointmentRows.find((a) => a.id === reviewModalApptId) ?? null,
+    [appointmentRows, reviewModalApptId],
+  );
+
   if (sessions.length === 0) {
     return (
       <li className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
@@ -121,9 +163,13 @@ function DashboardUpcomingSessions({
         appointment={detailAppointment}
         viewerRole="PROVIDER"
       />
-      {patchMut.isError ? (
+      {patchMut.isError || completeMut.isError ? (
         <li className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
-          {patchMut.error instanceof Error ? patchMut.error.message : 'No se pudo actualizar la cita.'}
+          {patchMut.error instanceof Error
+            ? patchMut.error.message
+            : completeMut.error instanceof Error
+              ? completeMut.error.message
+              : 'No se pudo actualizar la cita.'}
         </li>
       ) : null}
       {sessions.map((s) => {
@@ -200,7 +246,7 @@ function DashboardUpcomingSessions({
                         type="button"
                         variant="primary"
                         className="appt-btn-confirm-cta min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
-                        disabled={patchMut.isPending}
+                        disabled={patchMut.isPending || completeMut.isPending}
                         onClick={() =>
                           patchMut.mutate({
                             id: s.id,
@@ -217,12 +263,31 @@ function DashboardUpcomingSessions({
                         type="button"
                         variant="secondary"
                         className="min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
-                        disabled={patchMut.isPending}
+                        disabled={patchMut.isPending || completeMut.isPending}
                         onClick={() => patchMut.mutate({ id: s.id, status: 'DECLINED' })}
                       >
                         Rechazar
                       </Button>
                     </div>
+                  </div>
+                ) : s.status === 'CONFIRMED' ? (
+                  <div
+                    className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-48"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {new Date(s.endsAt).getTime() <= Date.now() ? (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="text-xs"
+                        disabled={completeMut.isPending || patchMut.isPending}
+                        onClick={() =>
+                          completeMut.mutate({ id: s.id, status: 'COMPLETED' })
+                        }
+                      >
+                        {completeMut.isPending ? '…' : 'Marcar como completada'}
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -230,6 +295,16 @@ function DashboardUpcomingSessions({
           </li>
         );
       })}
+      <PostSessionReviewModal
+        open={reviewModalApptId != null}
+        appointment={reviewModalAppointment}
+        role="PROVIDER"
+        getToken={getToken}
+        onClose={() => setReviewModalApptId(null)}
+        onUpdated={() => {
+          qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+        }}
+      />
     </>
   );
 }

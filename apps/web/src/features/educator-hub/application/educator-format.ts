@@ -42,6 +42,7 @@ const SESSION: Record<EducatorAppointmentStatus, string> = {
   DECLINED: 'Rechazada',
   CANCELLED_BY_FAMILY: 'Cancelada (familia)',
   CANCELLED_BY_PROVIDER: 'Cancelada (educador)',
+  COMPLETED: 'Completada',
 };
 
 const ROADMAP: Record<RoadmapBlockStatus, string> = {

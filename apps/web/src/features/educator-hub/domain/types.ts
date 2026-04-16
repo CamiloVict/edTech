@@ -62,7 +62,8 @@ export type EducatorAppointmentStatus =
   | 'CONFIRMED'
   | 'DECLINED'
   | 'CANCELLED_BY_FAMILY'
-  | 'CANCELLED_BY_PROVIDER';
+  | 'CANCELLED_BY_PROVIDER'
+  | 'COMPLETED';
 
 /** @deprecated Usa `EducatorAppointmentStatus`. */
 export type SessionStatus = EducatorAppointmentStatus;

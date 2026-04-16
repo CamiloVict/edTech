@@ -8,7 +8,16 @@ export type AppointmentStatus =
   | 'CONFIRMED'
   | 'DECLINED'
   | 'CANCELLED_BY_FAMILY'
-  | 'CANCELLED_BY_PROVIDER';
+  | 'CANCELLED_BY_PROVIDER'
+  | 'COMPLETED';
+
+export type AppointmentReviewAuthor = 'CONSUMER' | 'PROVIDER';
+
+export type AppointmentReviewRow = {
+  authorRole: AppointmentReviewAuthor;
+  stars: number;
+  comment: string | null;
+};
 
 export type InPersonVenueHost = 'CONSUMER' | 'PROVIDER';
 
@@ -36,6 +45,9 @@ export type AppointmentRow = {
   meetingUrl: string | null;
   attendanceMode?: AppointmentAttendance | null;
   inPersonVenueHost: InPersonVenueHost;
+  reviews?: AppointmentReviewRow[];
+  consumerReviewPromptDismissals?: number;
+  providerReviewPromptDismissals?: number;
   createdAt: string;
   updatedAt: string;
   providerProfile: {
@@ -100,4 +112,29 @@ export function patchAppointment(
     body,
     getToken,
   });
+}
+
+export function submitAppointmentReview(
+  getToken: () => Promise<string | null>,
+  appointmentId: string,
+  body: { stars: number; comment?: string },
+) {
+  return apiRequest<AppointmentRow>(`/appointments/${appointmentId}/review`, {
+    method: 'POST',
+    body,
+    getToken,
+  });
+}
+
+export function dismissAppointmentReviewPrompt(
+  getToken: () => Promise<string | null>,
+  appointmentId: string,
+) {
+  return apiRequest<AppointmentRow>(
+    `/appointments/${appointmentId}/review-prompt-dismiss`,
+    {
+      method: 'POST',
+      getToken,
+    },
+  );
 }

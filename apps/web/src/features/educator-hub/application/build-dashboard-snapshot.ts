@@ -172,9 +172,14 @@ export function sortUpcomingEducatorSessions(
   sessions: EducatorSession[],
 ): EducatorSession[] {
   return [...sessions].sort((a, b) => {
-    const pa = a.status === 'PENDING' ? 0 : 1;
-    const pb = b.status === 'PENDING' ? 0 : 1;
-    if (pa !== pb) return pa - pb;
+    const rank = (s: EducatorSession) => {
+      if (s.status === 'PENDING') return 0;
+      if (s.status === 'COMPLETED') return 2;
+      return 1;
+    };
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
     return new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime();
   });
 }
@@ -196,7 +201,7 @@ function sessionsStartingThisWeek(
   const end = new Date(start);
   end.setDate(end.getDate() + 7);
   return appointments.filter((a) => {
-    if (TERMINAL.has(a.status)) return false;
+    if (TERMINAL.has(a.status) || a.status === 'COMPLETED') return false;
     const s = new Date(a.startsAt);
     return !Number.isNaN(s.getTime()) && s >= start && s < end;
   }).length;
@@ -220,7 +225,9 @@ export function buildActiveStudentsFromAppointments(
   appointments: AppointmentRow[],
 ): EducatorStudent[] {
   const now = Date.now();
-  const confirmed = appointments.filter((a) => a.status === 'CONFIRMED');
+  const confirmed = appointments.filter(
+    (a) => a.status === 'CONFIRMED' || a.status === 'COMPLETED',
+  );
   const byKey = new Map<string, AppointmentRow[]>();
   for (const a of confirmed) {
     const k = studentGroupKey(a);

@@ -113,6 +113,9 @@ function buildAppointmentEventTitle(a: AppointmentRow): string {
   if (a.status === 'CONFIRMED') {
     return `Cita confirmada · ${child} · ${fam}`;
   }
+  if (a.status === 'COMPLETED') {
+    return `Cita completada · ${child} · ${fam}`;
+  }
   if (a.status === 'DECLINED') {
     return `Rechazada · ${child}`;
   }
@@ -141,6 +144,9 @@ function appointmentsToEvents(appointments: AppointmentRow[]): EventInput[] {
       };
     }
     if (a.status === 'CONFIRMED') {
+      return { ...base, classNames: ['provider-cal-appt-confirmed'] };
+    }
+    if (a.status === 'COMPLETED') {
       return { ...base, classNames: ['provider-cal-appt-confirmed'] };
     }
     return { ...base, classNames: ['provider-cal-appt-closed'] };
