@@ -17,6 +17,7 @@ import {
 } from '@/features/bootstrap/api/bootstrap-api';
 import { ConsumerFamilyForm } from '@/features/consumer/components/consumer-family-form';
 import { ConsumerLessonsCalendar } from '@/features/consumer/components/consumer-lessons-calendar';
+import { ConsumerUpcomingAppointmentsPanel } from '@/features/consumer/components/consumer-upcoming-appointments-panel';
 import {
   consumerHubHref,
   parseConsumerHubSection,
@@ -288,75 +289,21 @@ function ConsumerHubContent() {
               </p>
             </section>
 
-            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-base font-bold text-primary">
-                  Próximas citas
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSeccion('citas')}
-                  className="text-left text-sm font-semibold text-primary underline underline-offset-2 sm:text-right"
-                >
-                  Ver todas las citas
-                </button>
-              </div>
-              {upcoming.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  No tienes citas activas. Explora educadores y solicita una
-                  dentro de sus ventanas publicadas.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-3">
-                  {upcoming.slice(0, 3).map((a) => (
-                    <li
-                      key={a.id}
-                      className={`px-4 py-3 text-sm ${apptStatusCardClass(a.status)}`}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-semibold text-foreground">
-                            Para {a.child?.firstName ?? '—'}
-                          </p>
-                          <p className="font-semibold text-foreground">
-                            {a.providerProfile.fullName?.trim() || 'Educador'}
-                          </p>
-                          <p className="mt-1 text-muted-foreground">
-                            {formatApptRange(a.startsAt, a.endsAt)}
-                          </p>
-                          <p className="mt-1.5">
-                            <span className={apptStatusBadgeClass(a.status)}>
-                              {APPOINTMENT_STATUS_LABEL_ES[a.status]}
-                            </span>
-                          </p>
-                          {a.requestsAlternativeSchedule ? (
-                            <p className="mt-1 text-xs font-medium text-violet-700">
-                              Horario propuesto (el educador lo revisa)
-                            </p>
-                          ) : null}
-                        </div>
-                        {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (
-                          <Button
-                            variant="secondary"
-                            className="shrink-0 text-xs"
-                            disabled={cancelMut.isPending}
-                            onClick={() => cancelMut.mutate(a.id)}
-                          >
-                            Cancelar
-                          </Button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div className="space-y-4">
+              <ConsumerUpcomingAppointmentsPanel
+                appointments={upcoming}
+                maxItems={3}
+                emptyMessage="No tienes citas activas. Explora educadores y solicita una dentro de sus ventanas publicadas."
+                onManageClick={() => setSeccion('citas')}
+                manageLabel="Ver todas las citas"
+              />
               <Link
                 href="/explorar"
-                className="mt-4 inline-block text-sm font-semibold text-primary underline underline-offset-2"
+                className="inline-block text-sm font-semibold text-primary underline underline-offset-2"
               >
                 Buscar educadores
               </Link>
-            </section>
+            </div>
 
             <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
