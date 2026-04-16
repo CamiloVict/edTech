@@ -1,4 +1,4 @@
-import { IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateAppointmentDto {
   @IsString()
@@ -19,4 +19,9 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsString()
   noteFromFamily?: string;
+
+  /** Si es true, no exigimos que el rango caiga dentro de un bloque de disponibilidad (petición especial). */
+  @IsOptional()
+  @IsBoolean()
+  requestsAlternativeSchedule?: boolean;
 }

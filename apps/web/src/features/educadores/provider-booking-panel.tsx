@@ -4,13 +4,24 @@ import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createAppointment } from '@/features/appointments/api/appointments-api';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
 import { consumerHubHref } from '@/features/consumer/lib/consumer-hub';
+import {
+  BOOKING_NEAR_WINDOW_DAY_COUNT,
+  filterSlotsToQuickPickHorizon,
+  formatSlotRangeLabel,
+  generateBookableSlots,
+  groupSlotsByDay,
+} from '@/features/educadores/lib/bookable-slots';
+import {
+  getLocalCustomAlternativeDatetimeInputs,
+  isCustomAlternativeRangeValid,
+  parseDatetimeLocal,
+} from '@/features/educadores/lib/custom-alternative-window';
 import type { ProviderDetailResponse } from '@/features/providers/api/providers-api';
-import { AvailabilityFullCalendar } from '@/features/scheduling/components/availability-full-calendar';
 import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
@@ -20,6 +31,17 @@ export type ProviderBookingViewer = {
   canBook: boolean;
   isProviderViewer: boolean;
 };
+
+/** Desde el calendario público del perfil: mismo `id` en peticiones consecutivas fuerza re-aplicar. */
+export type SlotPrefillRequest = {
+  id: number;
+  startsAt: string;
+  endsAt: string;
+};
+
+type BookingMode = 'published' | 'custom';
+
+const CUSTOM_NOTE_MIN = 15;
 
 function unitLabel(unit: string): string {
   if (unit === 'HOUR') return 'por hora';
@@ -46,19 +68,6 @@ function toDatetimeLocalValue(d: Date): string {
   const h = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${y}-${m}-${day}T${h}:${min}`;
-}
-
-function parseDatetimeLocal(s: string): Date | null {
-  if (!s.trim()) return null;
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function addMinutesToDatetimeLocal(startLocal: string, minutes: number): string {
-  const d = parseDatetimeLocal(startLocal);
-  if (!d) return '';
-  d.setMinutes(d.getMinutes() + minutes);
-  return toDatetimeLocalValue(d);
 }
 
 function formatSlotSummary(startsLocal: string, endsLocal: string): string | null {
@@ -96,12 +105,16 @@ export function ProviderBookingPanel({
   detail,
   detailLoading,
   detailError,
+  slotPrefillRequest,
+  onSlotPrefillApplied,
 }: {
   providerProfileId: string;
   viewer: ProviderBookingViewer;
   detail: ProviderDetailResponse | null | undefined;
   detailLoading: boolean;
   detailError: boolean;
+  slotPrefillRequest?: SlotPrefillRequest | null;
+  onSlotPrefillApplied?: () => void;
 }) {
   const { getToken } = useAuth();
   const router = useRouter();
@@ -113,6 +126,12 @@ export function ProviderBookingPanel({
     enabled: viewer.canBook,
   });
 
+  const customAltInputs = getLocalCustomAlternativeDatetimeInputs();
+  const lastPrefillId = useRef<number | null>(null);
+
+  const [bookingMode, setBookingMode] = useState<BookingMode>('published');
+  const [slotLengthMins, setSlotLengthMins] = useState(60);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [startsLocal, setStartsLocal] = useState('');
   const [endsLocal, setEndsLocal] = useState('');
   const [note, setNote] = useState('');
@@ -120,7 +139,26 @@ export function ProviderBookingPanel({
 
   const availabilityBlocks = detail?.availabilityBlocks ?? [];
 
+  const bookableSlots = useMemo(
+    () => generateBookableSlots(availabilityBlocks, slotLengthMins),
+    [availabilityBlocks, slotLengthMins],
+  );
+
+  const quickPickSlots = useMemo(
+    () => filterSlotsToQuickPickHorizon(bookableSlots),
+    [bookableSlots],
+  );
+
+  const slotsByDayQuick = useMemo(
+    () => groupSlotsByDay(quickPickSlots),
+    [quickPickSlots],
+  );
+
   useEffect(() => {
+    lastPrefillId.current = null;
+    setBookingMode('published');
+    setSlotLengthMins(60);
+    setSelectedSlotId(null);
     setStartsLocal('');
     setEndsLocal('');
     setNote('');
@@ -136,22 +174,43 @@ export function ProviderBookingPanel({
     }
   }, [viewer.canBook, consumerQuery.data?.children]);
 
-  const onBookingSlotSelected = useCallback(
-    ({ startsAt, endsAt }: { startsAt: string; endsAt: string }) => {
-      const start = new Date(startsAt);
-      const end = new Date(endsAt);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
-      setStartsLocal(toDatetimeLocalValue(start));
-      setEndsLocal(toDatetimeLocalValue(end));
-    },
-    [],
-  );
+  useEffect(() => {
+    setSelectedSlotId(null);
+  }, [slotLengthMins]);
 
-  const applyDurationMins = (mins: number) => {
-    if (!startsLocal.trim()) return;
-    const nextEnd = addMinutesToDatetimeLocal(startsLocal, mins);
-    if (nextEnd) setEndsLocal(nextEnd);
-  };
+  useEffect(() => {
+    setSelectedSlotId(null);
+    if (bookingMode === 'custom') {
+      setStartsLocal('');
+      setEndsLocal('');
+    }
+  }, [bookingMode]);
+
+  useEffect(() => {
+    if (!slotPrefillRequest) return;
+    if (lastPrefillId.current === slotPrefillRequest.id) return;
+    lastPrefillId.current = slotPrefillRequest.id;
+    const start = new Date(slotPrefillRequest.startsAt);
+    const end = new Date(slotPrefillRequest.endsAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      onSlotPrefillApplied?.();
+      return;
+    }
+    setBookingMode('published');
+    setSelectedSlotId(null);
+    setStartsLocal(toDatetimeLocalValue(start));
+    setEndsLocal(toDatetimeLocalValue(end));
+    onSlotPrefillApplied?.();
+  }, [slotPrefillRequest, onSlotPrefillApplied]);
+
+  const applySlot = useCallback((slot: { id: string; startsAt: string; endsAt: string }) => {
+    const start = new Date(slot.startsAt);
+    const end = new Date(slot.endsAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+    setSelectedSlotId(slot.id);
+    setStartsLocal(toDatetimeLocalValue(start));
+    setEndsLocal(toDatetimeLocalValue(end));
+  }, []);
 
   const slotSummary = useMemo(
     () => formatSlotSummary(startsLocal, endsLocal),
@@ -165,12 +224,27 @@ export function ProviderBookingPanel({
       }
       const startsAt = new Date(startsLocal).toISOString();
       const endsAt = new Date(endsLocal).toISOString();
+      const alternative = bookingMode === 'custom';
+      if (alternative && note.trim().length < CUSTOM_NOTE_MIN) {
+        throw new Error(
+          `Describe tu propuesta en al menos ${CUSTOM_NOTE_MIN} caracteres.`,
+        );
+      }
+      if (
+        alternative &&
+        !isCustomAlternativeRangeValid(startsLocal, endsLocal)
+      ) {
+        throw new Error(
+          `Las peticiones con otro horario solo pueden ser dentro de los próximos ${BOOKING_NEAR_WINDOW_DAY_COUNT} días calendario (hasta el ${customAltInputs.lastDayLabel}).`,
+        );
+      }
       return createAppointment(getToken, {
         providerProfileId,
         startsAt,
         endsAt,
         childId: childId.trim(),
         noteFromFamily: note.trim() || undefined,
+        requestsAlternativeSchedule: alternative,
       });
     },
     onSuccess: () => {
@@ -185,6 +259,17 @@ export function ProviderBookingPanel({
       : createMut.error instanceof Error
         ? createMut.error.message
         : null;
+
+  const canSubmitPublished =
+    bookingMode === 'published' &&
+    Boolean(startsLocal && endsLocal && childId.trim()) &&
+    availabilityBlocks.length > 0;
+
+  const canSubmitCustom =
+    bookingMode === 'custom' &&
+    Boolean(startsLocal && endsLocal && childId.trim()) &&
+    note.trim().length >= CUSTOM_NOTE_MIN &&
+    isCustomAlternativeRangeValid(startsLocal, endsLocal);
 
   if (!viewer.isSignedIn) {
     return (
@@ -260,57 +345,45 @@ export function ProviderBookingPanel({
 
       {viewer.canBook ? (
         <div className="rounded-2xl border border-accent/35 bg-linear-to-b from-accent-soft/20 to-card p-5 shadow-sm sm:p-6">
-          <h3 className="text-base font-bold text-foreground">Agendar clase</h3>
+          <h3 className="text-base font-bold text-foreground">Solicitar una clase</h3>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            Elige un hueco dentro del horario publicado por el educador. En{' '}
-            <span className="font-semibold text-foreground">Semana</span> o{' '}
-            <span className="font-semibold text-foreground">Día</span> verás las
-            franjas libres (resaltadas) y podrás arrastrar el intervalo de la
-            clase, como en el calendario del iPhone.
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            En <span className="font-medium text-foreground">Mes</span> o{' '}
-            <span className="font-medium text-foreground">Lista</span> solo
-            consultas; para elegir hora, cambia a Semana o Día.
+            Elige una franja en los próximos {BOOKING_NEAR_WINDOW_DAY_COUNT} días
+            con los botones, o elige una ventana en{' '}
+            <span className="font-semibold text-foreground">
+              Disponibilidad publicada
+            </span>{' '}
+            más abajo para rellenar aquí el horario y subir la vista. «Otro
+            horario» sirve para proponer un hueco en ese mismo periodo si no
+            encaja en lo publicado; el educador lo revisa antes de confirmar.
           </p>
 
-          {availabilityBlocks.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
-              Este educador no tiene franjas futuras publicadas. No es posible
-              agendar hasta que añada disponibilidad.
-            </div>
-          ) : (
-            <>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1">
-                  <span
-                    className="h-2.5 w-2.5 rounded-sm bg-accent/40 ring-1 ring-accent/50"
-                    aria-hidden
-                  />
-                  Franjas publicadas
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1">
-                  <span
-                    className="h-2.5 w-3 rounded-sm bg-primary/35 ring-1 ring-primary/45"
-                    aria-hidden
-                  />
-                  Tu selección
-                </span>
-              </div>
-              <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card p-1.5 shadow-sm sm:p-2">
-                <AvailabilityFullCalendar
-                  blocks={availabilityBlocks}
-                  bookingSelect
-                  height={540}
-                  initialView="timeGridWeek"
-                  onBookingSlotSelected={onBookingSlotSelected}
-                />
-              </div>
-            </>
-          )}
+          <div className="mt-4 flex rounded-xl border border-border bg-muted/30 p-1 text-sm font-semibold">
+            <button
+              type="button"
+              className={`flex-1 rounded-lg px-3 py-2.5 transition ${
+                bookingMode === 'published'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setBookingMode('published')}
+            >
+              Disponibilidad publicada
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-lg px-3 py-2.5 transition ${
+                bookingMode === 'custom'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setBookingMode('custom')}
+            >
+              Otro horario
+            </button>
+          </div>
 
-          <div className="mt-5 space-y-3">
-            {consumerQuery.data && consumerQuery.data.children.length > 0 ? (
+          {consumerQuery.data && consumerQuery.data.children.length > 0 ? (
+            <div className="mt-5">
               <Field
                 label="¿Para quién es la clase?"
                 hint="El educador verá este dato en su agenda."
@@ -328,96 +401,198 @@ export function ProviderBookingPanel({
                   ))}
                 </Select>
               </Field>
-            ) : consumerQuery.isSuccess ? (
-              <p className="text-sm text-red-700">
-                Añade al menos un hijo o hija en tu perfil para reservar.
-              </p>
-            ) : null}
-
-            {slotSummary ? (
-              <div className="rounded-xl border border-primary/20 bg-muted/60 px-3 py-2.5">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
-                  Horario elegido
-                </p>
-                <p className="mt-0.5 text-sm font-semibold capitalize text-foreground">
-                  {slotSummary}
-                </p>
-              </div>
-            ) : null}
-
-            <div>
-              <p className="text-xs font-semibold text-foreground">
-                Duración rápida (desde la hora de inicio)
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {[
-                  { label: '45 min', m: 45 },
-                  { label: '1 h', m: 60 },
-                  { label: '1 h 30', m: 90 },
-                  { label: '2 h', m: 120 },
-                ].map(({ label, m }) => (
-                  <button
-                    key={m}
-                    type="button"
-                    disabled={!startsLocal.trim()}
-                    onClick={() => applyDurationMins(m)}
-                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
             </div>
+          ) : consumerQuery.isSuccess ? (
+            <p className="mt-5 text-sm text-red-700">
+              Añade al menos un hijo o hija en tu perfil para reservar.
+            </p>
+          ) : null}
 
-            <details className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
-              <summary className="cursor-pointer font-semibold text-foreground">
-                Ajuste fino (inicio y fin manual)
-              </summary>
-              <div className="mt-3 space-y-3 pb-1">
-                <Field label="Inicio">
+          {bookingMode === 'published' ? (
+            <>
+              {availabilityBlocks.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+                  Este educador no tiene franjas futuras publicadas. Puedes
+                  usar «Otro horario» para proponer una fecha, o volver más tarde.
+                </div>
+              ) : (
+                <>
+                  <div className="mt-5">
+                    <p className="text-xs font-semibold text-foreground">
+                      Duración de la sesión
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Solo los próximos {BOOKING_NEAR_WINDOW_DAY_COUNT} días;
+                      huecos que caben completos en lo publicado.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[30, 45, 60, 90].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setSlotLengthMins(m)}
+                          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                            slotLengthMins === m
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border bg-card text-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {m === 60 ? '1 h' : m === 90 ? '1 h 30' : `${m} min`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {bookableSlots.length === 0 ? (
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      No hay huecos con esta duración dentro de las ventanas
+                      publicadas. Prueba otra duración o usa «Otro horario».
+                    </p>
+                  ) : quickPickSlots.length === 0 ? (
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      No hay huecos en los próximos {BOOKING_NEAR_WINDOW_DAY_COUNT}{' '}
+                      días con esta duración. Prueba otra duración o usa «Otro
+                      horario» si aplica.
+                    </p>
+                  ) : (
+                    <div className="mt-4 space-y-5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                        Próximos {BOOKING_NEAR_WINDOW_DAY_COUNT} días — toca una
+                        franja
+                      </p>
+                      {slotsByDayQuick.map(({ dayKey, dayTitle, slots }) => (
+                        <section key={dayKey}>
+                          <h4 className="mb-2 text-sm font-semibold capitalize text-foreground">
+                            {dayTitle}
+                          </h4>
+                          <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
+                            {slots.map((slot) => {
+                              const active = selectedSlotId === slot.id;
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  onClick={() => applySlot(slot)}
+                                  className={`rounded-xl border px-3 py-3 text-left text-sm transition ${
+                                    active
+                                      ? 'border-primary bg-primary/10 font-semibold text-primary shadow-sm'
+                                      : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60'
+                                  }`}
+                                >
+                                  {formatSlotRangeLabel(
+                                    slot.startsAt,
+                                    slot.endsAt,
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <div className="mt-5 space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+              <p className="text-sm text-foreground">
+                Solo los mismos {BOOKING_NEAR_WINDOW_DAY_COUNT} días que la lista
+                rápida (hasta el {customAltInputs.lastDayLabel}). El educador
+                revisará la propuesta antes de confirmar.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Inicio propuesto">
                   <Input
                     type="datetime-local"
+                    min={customAltInputs.minInput}
+                    max={customAltInputs.maxInput}
                     value={startsLocal}
-                    onChange={(e) => setStartsLocal(e.target.value)}
+                    onChange={(e) => {
+                      setStartsLocal(e.target.value);
+                      setSelectedSlotId(null);
+                    }}
                   />
                 </Field>
-                <Field label="Fin">
+                <Field label="Fin propuesto">
                   <Input
                     type="datetime-local"
+                    min={customAltInputs.minInput}
+                    max={customAltInputs.maxInput}
                     value={endsLocal}
-                    onChange={(e) => setEndsLocal(e.target.value)}
+                    onChange={(e) => {
+                      setEndsLocal(e.target.value);
+                      setSelectedSlotId(null);
+                    }}
                   />
                 </Field>
               </div>
-            </details>
+              <Field
+                label={`Mensaje para el educador (mín. ${CUSTOM_NOTE_MIN} caracteres)`}
+                hint="Explica el motivo, flexibilidad u otras opciones de horario."
+              >
+                <TextArea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={4}
+                  className="min-h-[100px]"
+                />
+              </Field>
+              {note.trim().length > 0 && note.trim().length < CUSTOM_NOTE_MIN ? (
+                <p className="text-xs text-amber-800">
+                  Faltan {CUSTOM_NOTE_MIN - note.trim().length} caracteres para
+                  poder enviar.
+                </p>
+              ) : null}
+            </div>
+          )}
 
-            <Field label="Nota para el educador (opcional)">
-              <TextArea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={2}
-              />
-            </Field>
-            {bookingError ? (
-              <p className="text-sm text-red-700">{bookingError}</p>
-            ) : null}
-            <Button
-              type="button"
-              variant="primary"
-              className="w-full py-3"
-              disabled={
-                createMut.isPending ||
-                !startsLocal ||
-                !endsLocal ||
-                !childId.trim() ||
-                !consumerQuery.data?.children.length ||
-                availabilityBlocks.length === 0
-              }
-              onClick={() => createMut.mutate()}
-            >
-              {createMut.isPending ? 'Enviando…' : 'Enviar solicitud de clase'}
-            </Button>
-          </div>
+          {slotSummary ? (
+            <div className="mt-5 rounded-xl border border-primary/20 bg-muted/60 px-3 py-2.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-primary">
+                {bookingMode === 'custom'
+                  ? 'Horario propuesto'
+                  : 'Horario elegido'}
+              </p>
+              <p className="mt-0.5 text-sm font-semibold capitalize text-foreground">
+                {slotSummary}
+              </p>
+            </div>
+          ) : null}
+
+          {bookingMode === 'published' ? (
+            <div className="mt-4">
+              <Field
+                label="Nota para el educador (opcional)"
+                hint="Alergias, nivel, materiales…"
+              >
+                <TextArea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                />
+              </Field>
+            </div>
+          ) : null}
+
+          {bookingError ? (
+            <p className="mt-3 text-sm text-red-700">{bookingError}</p>
+          ) : null}
+
+          <Button
+            type="button"
+            variant="primary"
+            className="mt-5 w-full py-3"
+            disabled={
+              createMut.isPending ||
+              !consumerQuery.data?.children.length ||
+              (bookingMode === 'published' && !canSubmitPublished) ||
+              (bookingMode === 'custom' && !canSubmitCustom)
+            }
+            onClick={() => createMut.mutate()}
+          >
+            {createMut.isPending ? 'Enviando…' : 'Enviar solicitud de clase'}
+          </Button>
         </div>
       ) : viewer.isSignedIn && !viewer.isProviderViewer ? (
         <div className="rounded-2xl border border-accent/30 bg-accent-soft/20 p-5 text-sm text-foreground">

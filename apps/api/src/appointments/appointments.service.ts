@@ -12,6 +12,10 @@ import {
 
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import {
+  ALTERNATIVE_SCHEDULE_UTC_DAY_SPAN,
+  utcMaxInstantForAlternativeRequest,
+} from './custom-alternative-limits';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { PatchAppointmentDto } from './dto/patch-appointment.dto';
 
@@ -124,6 +128,9 @@ export class AppointmentsService {
     }
 
     const now = new Date();
+    if (startsAt < now) {
+      throw new BadRequestException('La hora de inicio debe ser en el futuro');
+    }
     if (endsAt <= now) {
       throw new BadRequestException('Appointment must end in the future');
     }
@@ -164,13 +171,33 @@ export class AppointmentsService {
       },
     });
 
-    const fits = blocks.some((b) =>
-      containedInBlock(startsAt, endsAt, b.startsAt, b.endsAt),
-    );
-    if (!fits) {
-      throw new BadRequestException(
-        'Requested time is not within an availability block for this educator',
+    const alternative = dto.requestsAlternativeSchedule === true;
+
+    if (!alternative) {
+      const fits = blocks.some((b) =>
+        containedInBlock(startsAt, endsAt, b.startsAt, b.endsAt),
       );
+      if (!fits) {
+        throw new BadRequestException(
+          'Requested time is not within an availability block for this educator',
+        );
+      }
+    } else {
+      const note = dto.noteFromFamily?.trim() ?? '';
+      if (note.length < 15) {
+        throw new BadRequestException(
+          'For a custom time request, add a note of at least 15 characters for the educator',
+        );
+      }
+      const altMax = utcMaxInstantForAlternativeRequest(now);
+      if (
+        startsAt.getTime() > altMax.getTime() ||
+        endsAt.getTime() > altMax.getTime()
+      ) {
+        throw new BadRequestException(
+          `Las peticiones con otro horario solo admiten fechas dentro de los próximos ${ALTERNATIVE_SCHEDULE_UTC_DAY_SPAN} días calendario.`,
+        );
+      }
     }
 
     return this.prisma.appointment.create({
@@ -180,6 +207,7 @@ export class AppointmentsService {
         startsAt,
         endsAt,
         status: AppointmentStatus.PENDING,
+        requestsAlternativeSchedule: alternative,
         noteFromFamily: dto.noteFromFamily?.trim() || null,
         childId: dto.childId,
       },

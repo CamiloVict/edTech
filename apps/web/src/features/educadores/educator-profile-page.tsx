@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/nextjs';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useBootstrapQuery } from '@/features/bootstrap/hooks/use-bootstrap';
 import { getPublicEducatorProfile } from '@/features/discover/discover-public-api';
@@ -12,6 +12,7 @@ import { EducatorAvailabilityCalendar } from '@/features/educadores/educator-ava
 import {
   ProviderBookingPanel,
   type ProviderBookingViewer,
+  type SlotPrefillRequest,
 } from '@/features/educadores/provider-booking-panel';
 import { getProviderDetail } from '@/features/providers/api/providers-api';
 import { PublicSiteHeader } from '@/shared/components/public-site-header';
@@ -56,6 +57,24 @@ export function EducatorProfilePage({
 }) {
   const { getToken, userId } = useAuth();
   const viewer = useBookingViewer();
+  const bookingRef = useRef<HTMLElement>(null);
+  const [slotPrefill, setSlotPrefill] = useState<SlotPrefillRequest | null>(null);
+
+  const clearSlotPrefill = useCallback(() => setSlotPrefill(null), []);
+
+  const pickAvailabilityWindow = useCallback(
+    ({ startsAt, endsAt }: { startsAt: string; endsAt: string }) => {
+      if (!viewer.canBook) return;
+      setSlotPrefill({ id: Date.now(), startsAt, endsAt });
+      requestAnimationFrame(() => {
+        bookingRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    },
+    [viewer.canBook],
+  );
 
   const publicQuery = useQuery({
     queryKey: ['educador-public', providerProfileId],
@@ -284,7 +303,11 @@ export function EducatorProfilePage({
             </section>
           </div>
 
-          <aside className="lg:col-span-5">
+          <aside
+            ref={bookingRef}
+            id="pedir-cita"
+            className="scroll-mt-28 lg:col-span-5"
+          >
             <div className="lg:sticky lg:top-24">
               <ProviderBookingPanel
                 providerProfileId={providerProfileId}
@@ -292,6 +315,8 @@ export function EducatorProfilePage({
                 detail={detail}
                 detailLoading={Boolean(userId && detailQuery.isPending)}
                 detailError={detailQuery.isError}
+                slotPrefillRequest={slotPrefill}
+                onSlotPrefillApplied={clearSlotPrefill}
               />
             </div>
           </aside>
@@ -337,6 +362,9 @@ export function EducatorProfilePage({
             ) : detail?.availabilityBlocks?.length ? (
               <EducatorAvailabilityCalendar
                 blocks={detail.availabilityBlocks}
+                onSelectWindow={
+                  viewer.canBook ? pickAvailabilityWindow : undefined
+                }
               />
             ) : (
               <p className="text-sm text-muted-foreground">

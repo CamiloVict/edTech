@@ -331,6 +331,11 @@ function ConsumerHubContent() {
                           <p className="mt-1 text-xs text-muted-foreground">
                             {statusConsumerLabel(a.status)}
                           </p>
+                          {a.requestsAlternativeSchedule ? (
+                            <p className="mt-1 text-xs font-medium text-violet-700">
+                              Horario propuesto (el educador lo revisa)
+                            </p>
+                          ) : null}
                         </div>
                         {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (
                           <Button
@@ -430,6 +435,11 @@ function ConsumerHubContent() {
                           <p className="mt-1 text-xs text-muted-foreground">
                             {statusConsumerLabel(a.status)}
                           </p>
+                          {a.requestsAlternativeSchedule ? (
+                            <p className="mt-1 text-xs font-medium text-violet-700">
+                              Horario propuesto (el educador lo revisa)
+                            </p>
+                          ) : null}
                         </div>
                         {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (
                           <Button

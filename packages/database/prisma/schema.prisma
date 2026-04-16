@@ -155,6 +155,8 @@ model Appointment {
   startsAt            DateTime           @map("starts_at")
   endsAt              DateTime           @map("ends_at")
   status              AppointmentStatus
+  /// La familia pide un horario que no encaja en las ventanas publicadas; el educador valora la propuesta.
+  requestsAlternativeSchedule Boolean  @default(false) @map("requests_alternative_schedule")
   noteFromFamily      String?            @map("note_from_family")
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")

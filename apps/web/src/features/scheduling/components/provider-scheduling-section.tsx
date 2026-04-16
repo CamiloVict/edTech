@@ -274,6 +274,11 @@ export function ProviderSchedulingSection() {
                 <p className="mt-1 text-stone-600">
                   {formatApptRange(a.startsAt, a.endsAt)}
                 </p>
+                {Boolean(a.requestsAlternativeSchedule) ? (
+                  <p className="mt-2 inline-flex rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-900">
+                    Propuesta fuera del calendario publicado
+                  </p>
+                ) : null}
                 {a.noteFromFamily ? (
                   <p className="mt-2 text-stone-700">
                     <span className="font-medium">Nota: </span>

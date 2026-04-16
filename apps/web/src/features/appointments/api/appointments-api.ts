@@ -15,6 +15,8 @@ export type AppointmentRow = {
   startsAt: string;
   endsAt: string;
   status: AppointmentStatus;
+  /** Presente tras migración; si falta, se trata como false. */
+  requestsAlternativeSchedule?: boolean;
   noteFromFamily: string | null;
   createdAt: string;
   updatedAt: string;
@@ -51,6 +53,7 @@ export function createAppointment(
     endsAt: string;
     childId: string;
     noteFromFamily?: string;
+    requestsAlternativeSchedule?: boolean;
   },
 ) {
   return apiRequest<AppointmentRow>('/appointments', {
