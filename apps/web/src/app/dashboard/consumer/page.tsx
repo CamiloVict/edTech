@@ -16,6 +16,7 @@ import {
   fetchBootstrap,
 } from '@/features/bootstrap/api/bootstrap-api';
 import { ConsumerFamilyForm } from '@/features/consumer/components/consumer-family-form';
+import { ConsumerLessonsCalendar } from '@/features/consumer/components/consumer-lessons-calendar';
 import {
   consumerHubHref,
   parseConsumerHubSection,
@@ -360,14 +361,28 @@ function ConsumerHubContent() {
               </Link>
             </section>
 
-            <section className="rounded-2xl border border-dashed border-border bg-muted/30 p-5 sm:p-6">
-              <h2 className="text-base font-bold text-primary">
-                Notas del docente
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Próximamente verás aquí comentarios y seguimiento por hijo o por
-                servicio contratado.
-              </p>
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-primary">
+                    Calendario de lecciones
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Citas pendientes o confirmadas. Cambia a semana o lista para
+                    ver horarios con más detalle.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSeccion('citas')}
+                  className="shrink-0 text-left text-sm font-semibold text-primary underline underline-offset-2 sm:text-right"
+                >
+                  Gestionar citas
+                </button>
+              </div>
+              <div className="mt-4">
+                <ConsumerLessonsCalendar appointments={allAppts} />
+              </div>
             </section>
           </>
         ) : null}

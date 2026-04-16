@@ -123,6 +123,27 @@ body {
   color: #fff !important;
 }
 
+/* Lecciones / citas agendadas (hub familia — solo lectura) */
+.availability-fc .consumer-lesson-confirmed {
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  background-color: var(--primary) !important;
+  border-color: var(--primary-hover) !important;
+  color: #fff !important;
+}
+
+.availability-fc .consumer-lesson-pending {
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  background-color: rgb(234 179 8 / 0.95) !important;
+  border-color: rgb(202 138 4) !important;
+  color: rgb(66 32 6) !important;
+}
+
 /* Capa extra por si FC aplica opacidad a bg events */
 .availability-fc .availability-block-bg {
   opacity: 1 !important;
