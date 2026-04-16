@@ -14,6 +14,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import FullCalendar from '@fullcalendar/react';
 import { useCallback, useMemo, useRef } from 'react';
 
+import type { AppointmentRow } from '@/features/appointments/api/appointments-api';
+
 export type AvailabilityBlockLike = {
   id: string;
   startsAt: string;
@@ -24,6 +26,8 @@ export type AvailabilityBlockLike = {
 
 export type AvailabilityFullCalendarCoreProps = {
   blocks: AvailabilityBlockLike[];
+  /** Citas del proveedor: pendientes, confirmadas y resto de estados, superpuestas al calendario. */
+  appointments?: AppointmentRow[];
   editable?: boolean;
   onCreateRange?: (payload: {
     startsAt: string;
@@ -97,8 +101,55 @@ function blocksToEvents(
   });
 }
 
+const APPOINTMENT_EVENT_ID_PREFIX = 'fc-appt:';
+
+function buildAppointmentEventTitle(a: AppointmentRow): string {
+  const child = a.child?.firstName?.trim() || 'Alumno';
+  const fam = a.consumerProfile.fullName?.trim() || 'Familia';
+  if (a.status === 'PENDING') {
+    const alt = a.requestsAlternativeSchedule ? ' · horario propuesto' : '';
+    return `Solicitud · ${child}${alt}`;
+  }
+  if (a.status === 'CONFIRMED') {
+    return `Cita confirmada · ${child} · ${fam}`;
+  }
+  if (a.status === 'DECLINED') {
+    return `Rechazada · ${child}`;
+  }
+  return `${a.status.replace(/_/g, ' ')} · ${child}`;
+}
+
+const EMPTY_APPOINTMENTS: AppointmentRow[] = [];
+
+function appointmentsToEvents(appointments: AppointmentRow[]): EventInput[] {
+  return appointments.map((a) => {
+    const title = buildAppointmentEventTitle(a);
+    const base: EventInput = {
+      id: `${APPOINTMENT_EVENT_ID_PREFIX}${a.id}`,
+      title,
+      start: a.startsAt,
+      end: a.endsAt,
+      extendedProps: { source: 'appointment' as const },
+    };
+
+    if (a.status === 'PENDING') {
+      return {
+        ...base,
+        classNames: a.requestsAlternativeSchedule
+          ? ['provider-cal-appt-pending', 'provider-cal-appt-alt']
+          : ['provider-cal-appt-pending'],
+      };
+    }
+    if (a.status === 'CONFIRMED') {
+      return { ...base, classNames: ['provider-cal-appt-confirmed'] };
+    }
+    return { ...base, classNames: ['provider-cal-appt-closed'] };
+  });
+}
+
 export function AvailabilityFullCalendarCore({
   blocks,
+  appointments,
   editable = false,
   onCreateRange,
   onDeleteBlock,
@@ -111,10 +162,12 @@ export function AvailabilityFullCalendarCore({
   const viewTypeRef = useRef<string>(initialView);
 
   const bookingBg = bookingSelect && !editable;
-  const events = useMemo(
-    () => blocksToEvents(blocks, bookingBg),
-    [blocks, bookingBg],
-  );
+  const appointmentList = appointments ?? EMPTY_APPOINTMENTS;
+  const events = useMemo(() => {
+    const fromBlocks = blocksToEvents(blocks, bookingBg);
+    if (!appointmentList.length) return fromBlocks;
+    return [...fromBlocks, ...appointmentsToEvents(appointmentList)];
+  }, [blocks, bookingBg, appointmentList]);
 
   const selectAllow = useCallback(
     (span: DateSpanApi) => {
@@ -167,7 +220,7 @@ export function AvailabilityFullCalendarCore({
     (arg: EventClickArg) => {
       if (!editable || !onDeleteBlock) return;
       const id = arg.event.id;
-      if (!id) return;
+      if (!id || id.startsWith(APPOINTMENT_EVENT_ID_PREFIX)) return;
       const ok = window.confirm(
         '¿Eliminar esta ventana de disponibilidad? Las familias dejarán de verla en el calendario.',
       );

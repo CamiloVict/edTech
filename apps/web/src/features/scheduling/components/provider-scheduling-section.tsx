@@ -133,6 +133,11 @@ export function ProviderSchedulingSection() {
     [apptsQuery.data],
   );
 
+  const calendarAppointments = useMemo(
+    () => apptsQuery.data ?? [],
+    [apptsQuery.data],
+  );
+
   if (bootstrapQuery.isLoading) {
     return (
       <p className="text-sm text-muted-foreground">Comprobando tu sesión…</p>
@@ -311,8 +316,37 @@ export function ProviderSchedulingSection() {
             <span className="font-medium">Semana</span> o{' '}
             <span className="font-medium">Día</span>, arrastra para marcar una
             ventana. Las familias solo podrán reservar dentro de esos rangos.
-            Pulsa un bloque existente para eliminarlo.
+            Pulsa un bloque <span className="font-medium text-foreground">azul</span>{' '}
+            para eliminarlo; las citas se gestionan arriba en solicitudes u
+            otras citas.
           </p>
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-muted-foreground sm:text-xs">
+            <li className="flex items-center gap-1.5">
+              <span
+                className="size-2.5 shrink-0 rounded-sm bg-primary"
+                aria-hidden
+              />
+              <span>Ventana publicada (hueco libre para reservas)</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span
+                className="size-2.5 shrink-0 rounded-sm border-2 border-dashed border-accent bg-accent-soft"
+                aria-hidden
+              />
+              <span>Solicitud pendiente</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="size-2.5 shrink-0 rounded-sm bg-accent" aria-hidden />
+              <span>Cita confirmada (tomada)</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span
+                className="size-2.5 shrink-0 rounded-sm border border-border bg-muted"
+                aria-hidden
+              />
+              <span>Rechazada o cancelada</span>
+            </li>
+          </ul>
         </div>
         {blocksQuery.isError ? (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
@@ -333,6 +367,7 @@ export function ProviderSchedulingSection() {
           <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card p-2 shadow-sm sm:p-3">
             <AvailabilityFullCalendar
               blocks={blocksQuery.data ?? []}
+              appointments={calendarAppointments}
               editable
               height={640}
               initialView="timeGridWeek"
