@@ -33,8 +33,14 @@ export function apptStatusBadgeClass(status: AppointmentStatus): string {
 
 /** Eventos FullCalendar (familia): colores por estado, no por hijo. */
 export function apptCalendarEventClasses(status: AppointmentStatus): string[] {
-  return [
-    'consumer-appt-cal-event',
-    status === 'PENDING' ? 'appt-cal-pending' : 'appt-cal-confirmed',
-  ];
+  let cal = 'appt-cal-confirmed';
+  if (status === 'PENDING') cal = 'appt-cal-pending';
+  else if (
+    status === 'DECLINED' ||
+    status === 'CANCELLED_BY_FAMILY' ||
+    status === 'CANCELLED_BY_PROVIDER'
+  ) {
+    cal = 'appt-cal-cancelled';
+  }
+  return ['consumer-appt-cal-event', cal];
 }

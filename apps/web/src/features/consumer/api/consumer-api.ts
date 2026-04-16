@@ -6,6 +6,10 @@ export type ConsumerProfileResponse = {
   fullName: string | null;
   phone: string | null;
   city: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
+  unitOrBuilding: string | null;
+  dwellingType: 'HOUSE' | 'APARTMENT' | null;
   relationshipToChild: string | null;
   isProfileCompleted: boolean;
   children: {
@@ -36,6 +40,10 @@ export function patchConsumerProfile(
     fullName: string;
     phone: string;
     city: string;
+    streetAddress: string;
+    postalCode: string;
+    unitOrBuilding: string;
+    dwellingType: 'HOUSE' | 'APARTMENT';
     relationshipToChild: string;
   }>,
 ) {

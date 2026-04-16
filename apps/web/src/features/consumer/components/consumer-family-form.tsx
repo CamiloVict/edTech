@@ -17,7 +17,7 @@ import {
   postChild,
 } from '@/features/consumer/api/consumer-api';
 import { Button } from '@/shared/components/ui/button';
-import { Field, Input } from '@/shared/components/ui/field';
+import { Field, Input, Select } from '@/shared/components/ui/field';
 
 type ChildRow = {
   clientKey: string;
@@ -59,6 +59,10 @@ export function ConsumerFamilyForm() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [unitOrBuilding, setUnitOrBuilding] = useState('');
+  const [dwellingType, setDwellingType] = useState<'HOUSE' | 'APARTMENT' | ''>('');
   const [relationship, setRelationship] = useState('');
   const [children, setChildren] = useState<ChildRow[]>([newRow()]);
 
@@ -68,6 +72,10 @@ export function ConsumerFamilyForm() {
     setFullName(p.fullName ?? '');
     setPhone(p.phone ?? '');
     setCity(p.city ?? '');
+    setStreetAddress(p.streetAddress ?? '');
+    setPostalCode(p.postalCode ?? '');
+    setUnitOrBuilding(p.unitOrBuilding ?? '');
+    setDwellingType(p.dwellingType ?? '');
     setRelationship(p.relationshipToChild ?? '');
     if (p.children.length) {
       setChildren(
@@ -87,10 +95,17 @@ export function ConsumerFamilyForm() {
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!dwellingType) {
+        throw new Error('Indica si tu domicilio es casa o apartamento.');
+      }
       await patchConsumerProfile(getToken, {
         fullName,
         phone,
         city,
+        streetAddress,
+        postalCode,
+        unitOrBuilding,
+        dwellingType,
         relationshipToChild: relationship,
       });
 
@@ -189,7 +204,8 @@ export function ConsumerFamilyForm() {
           Familia y datos
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Actualiza tus datos y los de tus beneficiarios.
+          Actualiza tus datos y los de tus beneficiarios. La dirección detallada solo se comparte
+          con educadores con los que tengas una cita.
         </p>
       </div>
 
@@ -202,6 +218,41 @@ export function ConsumerFamilyForm() {
         </Field>
         <Field label="Ciudad">
           <Input value={city} onChange={(e) => setCity(e.target.value)} />
+        </Field>
+        <Field
+          label="Dirección (calle y número)"
+          hint="Se usará para citas presenciales en tu domicilio."
+        >
+          <Input
+            value={streetAddress}
+            onChange={(e) => setStreetAddress(e.target.value)}
+            placeholder="Ej. Carrera 7 #72-41"
+          />
+        </Field>
+        <Field label="Código postal">
+          <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+        </Field>
+        <Field
+          label="Unidad o edificio"
+          hint="Torre, portal, piso, nombre del conjunto…"
+        >
+          <Input
+            value={unitOrBuilding}
+            onChange={(e) => setUnitOrBuilding(e.target.value)}
+            placeholder="Ej. Torre B, apto 402"
+          />
+        </Field>
+        <Field label="Tipo de vivienda">
+          <Select
+            value={dwellingType}
+            onChange={(e) =>
+              setDwellingType(e.target.value as 'HOUSE' | 'APARTMENT' | '')
+            }
+          >
+            <option value="">Selecciona…</option>
+            <option value="HOUSE">Casa</option>
+            <option value="APARTMENT">Apartamento</option>
+          </Select>
         </Field>
         <Field label="Relación con el niño/a">
           <Input

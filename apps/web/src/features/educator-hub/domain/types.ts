@@ -56,13 +56,22 @@ export type EducatorAvailabilityBlock = {
   modeHint?: ServiceMode;
 };
 
-export type SessionStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED';
+/** Alineado con `AppointmentStatus` del API. */
+export type EducatorAppointmentStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'DECLINED'
+  | 'CANCELLED_BY_FAMILY'
+  | 'CANCELLED_BY_PROVIDER';
+
+/** @deprecated Usa `EducatorAppointmentStatus`. */
+export type SessionStatus = EducatorAppointmentStatus;
 
 export type EducatorSession = {
   id: string;
   startsAt: string;
   endsAt: string;
-  status: SessionStatus;
+  status: EducatorAppointmentStatus;
   studentName: string;
   familyName: string;
   childName: string;

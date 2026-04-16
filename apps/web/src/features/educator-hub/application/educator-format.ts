@@ -1,11 +1,11 @@
 import type {
   AgeBand,
+  EducatorAppointmentStatus,
   EducatorResourceType,
   OfferStatus,
   OfferType,
   RoadmapBlockStatus,
   ServiceMode,
-  SessionStatus,
 } from '../domain/types';
 
 const MODE: Record<ServiceMode, string> = {
@@ -36,11 +36,12 @@ const OFFER_STATUS: Record<OfferStatus, string> = {
   PAUSED: 'Pausada',
 };
 
-const SESSION: Record<SessionStatus, string> = {
+const SESSION: Record<EducatorAppointmentStatus, string> = {
   PENDING: 'Pendiente',
   CONFIRMED: 'Confirmada',
   DECLINED: 'Rechazada',
-  CANCELLED: 'Cancelada',
+  CANCELLED_BY_FAMILY: 'Cancelada (familia)',
+  CANCELLED_BY_PROVIDER: 'Cancelada (educador)',
 };
 
 const ROADMAP: Record<RoadmapBlockStatus, string> = {
@@ -76,7 +77,7 @@ export function formatOfferStatus(s: OfferStatus): string {
   return OFFER_STATUS[s];
 }
 
-export function formatSessionStatus(s: SessionStatus): string {
+export function formatSessionStatus(s: EducatorAppointmentStatus): string {
   return SESSION[s];
 }
 

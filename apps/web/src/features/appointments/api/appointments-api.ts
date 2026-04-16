@@ -1,4 +1,7 @@
 import { apiRequest } from '@/shared/lib/api';
+import type { ProviderKind } from '@/shared/types/bootstrap';
+
+export type AppointmentAttendance = 'IN_PERSON' | 'ONLINE';
 
 export type AppointmentStatus =
   | 'PENDING'
@@ -6,6 +9,18 @@ export type AppointmentStatus =
   | 'DECLINED'
   | 'CANCELLED_BY_FAMILY'
   | 'CANCELLED_BY_PROVIDER';
+
+export type InPersonVenueHost = 'CONSUMER' | 'PROVIDER';
+
+export type DwellingType = 'HOUSE' | 'APARTMENT';
+
+export type ProfileAddressSlice = {
+  streetAddress: string | null;
+  postalCode: string | null;
+  city: string | null;
+  unitOrBuilding: string | null;
+  dwellingType: DwellingType | null;
+};
 
 export type AppointmentRow = {
   id: string;
@@ -18,6 +33,9 @@ export type AppointmentRow = {
   /** Presente tras migración; si falta, se trata como false. */
   requestsAlternativeSchedule?: boolean;
   noteFromFamily: string | null;
+  meetingUrl: string | null;
+  attendanceMode?: AppointmentAttendance | null;
+  inPersonVenueHost: InPersonVenueHost;
   createdAt: string;
   updatedAt: string;
   providerProfile: {
@@ -25,13 +43,15 @@ export type AppointmentRow = {
     fullName: string | null;
     city: string | null;
     photoUrl: string | null;
-  };
+    serviceMode: import('@/shared/types/bootstrap').ServiceMode | null;
+    kinds?: ProviderKind[];
+  } & ProfileAddressSlice;
   consumerProfile: {
     id: string;
     fullName: string | null;
     phone: string | null;
     city: string | null;
-  };
+  } & ProfileAddressSlice;
   child: { id: string; firstName: string } | null;
 };
 
@@ -54,6 +74,8 @@ export function createAppointment(
     childId: string;
     noteFromFamily?: string;
     requestsAlternativeSchedule?: boolean;
+    meetingUrl?: string;
+    attendanceMode?: AppointmentAttendance;
   },
 ) {
   return apiRequest<AppointmentRow>('/appointments', {
@@ -66,7 +88,12 @@ export function createAppointment(
 export function patchAppointment(
   getToken: () => Promise<string | null>,
   appointmentId: string,
-  body: { status: AppointmentStatus },
+  body: {
+    status?: AppointmentStatus;
+    meetingUrl?: string;
+    inPersonVenueHost?: InPersonVenueHost;
+    attendanceMode?: AppointmentAttendance;
+  },
 ) {
   return apiRequest<AppointmentRow>(`/appointments/${appointmentId}`, {
     method: 'PATCH',

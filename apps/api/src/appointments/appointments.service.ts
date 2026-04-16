@@ -5,8 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AppointmentAttendance,
   AppointmentStatus,
+  InPersonVenueHost,
   Prisma,
+  ProviderKind,
+  ServiceMode,
   UserRole,
 } from '@repo/database';
 
@@ -35,6 +39,10 @@ function containedInBlock(
   blockEnd: Date,
 ): boolean {
   return apptStart >= blockStart && apptEnd <= blockEnd;
+}
+
+function isBabysitterOnlyKinds(kinds: ProviderKind[]): boolean {
+  return kinds.length > 0 && kinds.every((k) => k === ProviderKind.BABYSITTER);
 }
 
 @Injectable()
@@ -76,6 +84,12 @@ export class AppointmentsService {
           fullName: true,
           city: true,
           photoUrl: true,
+          serviceMode: true,
+          kinds: true,
+          streetAddress: true,
+          postalCode: true,
+          unitOrBuilding: true,
+          dwellingType: true,
         },
       },
       consumerProfile: {
@@ -84,12 +98,33 @@ export class AppointmentsService {
           fullName: true,
           phone: true,
           city: true,
+          streetAddress: true,
+          postalCode: true,
+          unitOrBuilding: true,
+          dwellingType: true,
         },
       },
       child: {
         select: { id: true, firstName: true },
       },
     };
+  }
+
+  private logisticsUpdateFromDto(
+    dto: PatchAppointmentDto,
+  ): Prisma.AppointmentUpdateInput {
+    const data: Prisma.AppointmentUpdateInput = {};
+    if (dto.meetingUrl !== undefined) {
+      const t = dto.meetingUrl.trim();
+      data.meetingUrl = t.length > 0 ? t : null;
+    }
+    if (dto.inPersonVenueHost !== undefined) {
+      data.inPersonVenueHost = dto.inPersonVenueHost;
+    }
+    if (dto.attendanceMode !== undefined) {
+      data.attendanceMode = dto.attendanceMode;
+    }
+    return data;
   }
 
   async listMineConsumer(clerkUserId: string) {
@@ -200,6 +235,32 @@ export class AppointmentsService {
       }
     }
 
+    const sm = provider.serviceMode ?? ServiceMode.IN_PERSON;
+    let attendance: AppointmentAttendance;
+    if (sm === ServiceMode.IN_PERSON) {
+      attendance = AppointmentAttendance.IN_PERSON;
+    } else if (sm === ServiceMode.ONLINE) {
+      attendance = AppointmentAttendance.ONLINE;
+    } else {
+      if (isBabysitterOnlyKinds(provider.kinds)) {
+        attendance = AppointmentAttendance.IN_PERSON;
+      } else if (!dto.attendanceMode) {
+        throw new BadRequestException(
+          'Indica si la sesión será presencial o en línea',
+        );
+      } else {
+        attendance = dto.attendanceMode;
+      }
+    }
+
+    const meetingTrim = dto.meetingUrl?.trim();
+    const meetingUrl =
+      attendance === AppointmentAttendance.ONLINE &&
+      meetingTrim &&
+      meetingTrim.length > 0
+        ? meetingTrim
+        : null;
+
     return this.prisma.appointment.create({
       data: {
         providerProfileId: dto.providerProfileId,
@@ -210,6 +271,9 @@ export class AppointmentsService {
         requestsAlternativeSchedule: alternative,
         noteFromFamily: dto.noteFromFamily?.trim() || null,
         childId: dto.childId,
+        meetingUrl,
+        attendanceMode: attendance,
+        inPersonVenueHost: InPersonVenueHost.CONSUMER,
       },
       include: this.appointmentInclude(),
     });
@@ -228,6 +292,8 @@ export class AppointmentsService {
     }
 
     const user = await this.users.findByClerkOrThrow(clerkUserId);
+    const logistics = this.logisticsUpdateFromDto(dto);
+    const hasLogistics = Object.keys(logistics).length > 0;
     const next = dto.status;
 
     if (user.role === UserRole.CONSUMER) {
@@ -235,26 +301,56 @@ export class AppointmentsService {
       if (!profile || appt.consumerProfileId !== profile.id) {
         throw new ForbiddenException('Not your appointment');
       }
-      if (next !== AppointmentStatus.CANCELLED_BY_FAMILY) {
-        throw new BadRequestException('Consumers can only cancel appointments');
+
+      if (next !== undefined && next !== AppointmentStatus.CANCELLED_BY_FAMILY) {
+        throw new BadRequestException(
+          'Las familias solo pueden cancelar la cita o actualizar enlace de reunión, modalidad (presencial/en línea) y lugar presencial.',
+        );
       }
-      if (
-        appt.status !== AppointmentStatus.PENDING &&
-        appt.status !== AppointmentStatus.CONFIRMED
-      ) {
-        throw new BadRequestException('This appointment cannot be cancelled');
+
+      if (next === AppointmentStatus.CANCELLED_BY_FAMILY) {
+        if (
+          appt.status !== AppointmentStatus.PENDING &&
+          appt.status !== AppointmentStatus.CONFIRMED
+        ) {
+          throw new BadRequestException('This appointment cannot be cancelled');
+        }
+        return this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: {
+            status: AppointmentStatus.CANCELLED_BY_FAMILY,
+            ...logistics,
+          },
+          include: this.appointmentInclude(),
+        });
       }
-      return this.prisma.appointment.update({
-        where: { id: appointmentId },
-        data: { status: AppointmentStatus.CANCELLED_BY_FAMILY },
-        include: this.appointmentInclude(),
-      });
+
+      if (hasLogistics) {
+        return this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: logistics,
+          include: this.appointmentInclude(),
+        });
+      }
+
+      throw new BadRequestException('Nada que actualizar');
     }
 
     if (user.role === UserRole.PROVIDER) {
       const profile = user.providerProfile;
       if (!profile || appt.providerProfileId !== profile.id) {
         throw new ForbiddenException('Not your appointment');
+      }
+
+      if (next === undefined) {
+        if (!hasLogistics) {
+          throw new BadRequestException('Nada que actualizar');
+        }
+        return this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: logistics,
+          include: this.appointmentInclude(),
+        });
       }
 
       if (
@@ -276,7 +372,10 @@ export class AppointmentsService {
         }
         return this.prisma.appointment.update({
           where: { id: appointmentId },
-          data: { status: AppointmentStatus.CANCELLED_BY_PROVIDER },
+          data: {
+            status: AppointmentStatus.CANCELLED_BY_PROVIDER,
+            ...logistics,
+          },
           include: this.appointmentInclude(),
         });
       }
@@ -318,7 +417,7 @@ export class AppointmentsService {
 
       return this.prisma.appointment.update({
         where: { id: appointmentId },
-        data: { status: next },
+        data: { status: next, ...logistics },
         include: this.appointmentInclude(),
       });
     }

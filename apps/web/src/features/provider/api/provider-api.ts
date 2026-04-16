@@ -10,6 +10,10 @@ export type ProviderProfileResponse = {
   focusAreas: string[];
   serviceMode: ServiceMode | null;
   city: string | null;
+  streetAddress: string | null;
+  postalCode: string | null;
+  unitOrBuilding: string | null;
+  dwellingType: 'HOUSE' | 'APARTMENT' | null;
   isProfileCompleted: boolean;
   photoUrl: string | null;
   averageRating: number;
@@ -34,6 +38,10 @@ export function patchProviderProfile(
     focusAreas: string[];
     serviceMode: ServiceMode;
     city: string;
+    streetAddress: string;
+    postalCode: string;
+    unitOrBuilding: string;
+    dwellingType: 'HOUSE' | 'APARTMENT';
     photoUrl: string;
     availabilitySummary: string;
     kinds: ProviderKind[];

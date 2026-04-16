@@ -113,6 +113,7 @@ export default function ProviderDashboardPage() {
       snapshot={snapshot}
       displayName={displayName}
       publicProfileId={profileQuery.data.id}
+      appointmentRows={appointmentsQuery.data ?? []}
     />
   );
 }

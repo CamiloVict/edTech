@@ -38,12 +38,29 @@ enum RateUnit {
   DAY
 }
 
+enum DwellingType {
+  HOUSE
+  APARTMENT
+}
+
+/// Dónde ocurre la sesión presencial: domicilio de la familia o espacio del educador.
+enum InPersonVenueHost {
+  CONSUMER
+  PROVIDER
+}
+
 enum AppointmentStatus {
   PENDING
   CONFIRMED
   DECLINED
   CANCELLED_BY_FAMILY
   CANCELLED_BY_PROVIDER
+}
+
+/// Cómo se realiza una cita concreta (p. ej. educador híbrido: la familia elige presencial vs en línea).
+enum AppointmentAttendance {
+  IN_PERSON
+  ONLINE
 }
 
 model User {
@@ -69,6 +86,12 @@ model ConsumerProfile {
   fullName              String?   @map("full_name")
   phone                 String?
   city                  String?
+  /// Dirección completa (calle, número). Solo se muestra en detalle de citas a las partes.
+  streetAddress         String?   @map("street_address")
+  postalCode            String?   @map("postal_code")
+  /// Torre, portal, interior, nombre del edificio, etc.
+  unitOrBuilding        String?   @map("unit_or_building")
+  dwellingType          DwellingType? @map("dwelling_type")
   relationshipToChild   String?   @map("relationship_to_child")
   isProfileCompleted    Boolean   @default(false) @map("is_profile_completed")
   onboardingCompletedAt DateTime? @map("onboarding_completed_at")
@@ -90,6 +113,10 @@ model ProviderProfile {
   focusAreas            String[]     @default([]) @map("focus_areas")
   serviceMode           ServiceMode? @map("service_mode")
   city                  String?
+  streetAddress         String?      @map("street_address")
+  postalCode            String?      @map("postal_code")
+  unitOrBuilding        String?      @map("unit_or_building")
+  dwellingType          DwellingType? @map("dwelling_type")
   isProfileCompleted    Boolean      @default(false) @map("is_profile_completed")
   onboardingCompletedAt DateTime?    @map("onboarding_completed_at")
   /// URL de foto (storage propio o CDN); sin modelo de archivos aún.
@@ -158,6 +185,12 @@ model Appointment {
   /// La familia pide un horario que no encaja en las ventanas publicadas; el educador valora la propuesta.
   requestsAlternativeSchedule Boolean  @default(false) @map("requests_alternative_schedule")
   noteFromFamily      String?            @map("note_from_family")
+  /// Enlace de videollamada (Meet, Zoom, etc.) para sesiones en línea o parte virtual.
+  meetingUrl          String?            @map("meeting_url")
+  /// Si el educador es híbrido, indica si esta cita es presencial o en línea (cuidado solo presencial se fuerza en servidor).
+  attendanceMode      AppointmentAttendance? @map("attendance_mode")
+  /// Para sesión presencial: si el encuentro es en casa de la familia o en el espacio del educador.
+  inPersonVenueHost   InPersonVenueHost  @default(CONSUMER) @map("in_person_venue_host")
   createdAt           DateTime           @default(now()) @map("created_at")
   updatedAt           DateTime           @updatedAt @map("updated_at")
 

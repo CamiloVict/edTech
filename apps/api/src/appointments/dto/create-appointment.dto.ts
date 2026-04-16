@@ -1,4 +1,5 @@
-import { IsBoolean, IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
+import { AppointmentAttendance } from '@repo/database';
+import { IsBoolean, IsEnum, IsISO8601, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateAppointmentDto {
   @IsString()
@@ -24,4 +25,14 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsBoolean()
   requestsAlternativeSchedule?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  meetingUrl?: string;
+
+  /** Obligatorio si el educador es híbrido y no es solo cuidado/babysitting. */
+  @IsOptional()
+  @IsEnum(AppointmentAttendance)
+  attendanceMode?: AppointmentAttendance;
 }

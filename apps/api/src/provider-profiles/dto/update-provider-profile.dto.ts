@@ -1,4 +1,4 @@
-import { ProviderKind, ServiceMode } from '@repo/database';
+import { DwellingType, ProviderKind, ServiceMode } from '@repo/database';
 import {
   ArrayMaxSize,
   IsArray,
@@ -45,6 +45,27 @@ export class UpdateProviderProfileDto {
   @IsString()
   @MaxLength(120)
   city?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(240)
+  streetAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(20)
+  postalCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  unitOrBuilding?: string;
+
+  @IsOptional()
+  @IsEnum(DwellingType)
+  dwellingType?: DwellingType;
 
   @IsOptional()
   @IsString()

@@ -51,6 +51,10 @@ export default function ProviderOnboardingPage() {
   const [focus, setFocus] = useState('');
   const [serviceMode, setServiceMode] = useState<ServiceMode | ''>('');
   const [city, setCity] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [unitOrBuilding, setUnitOrBuilding] = useState('');
+  const [dwellingType, setDwellingType] = useState<'HOUSE' | 'APARTMENT' | ''>('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [availabilitySummary, setAvailabilitySummary] = useState('');
   const [kindTeacher, setKindTeacher] = useState(true);
@@ -65,6 +69,10 @@ export default function ProviderOnboardingPage() {
     setFocus(p.focusAreas.join(', '));
     setServiceMode(p.serviceMode ?? '');
     setCity(p.city ?? '');
+    setStreetAddress(p.streetAddress ?? '');
+    setPostalCode(p.postalCode ?? '');
+    setUnitOrBuilding(p.unitOrBuilding ?? '');
+    setDwellingType(p.dwellingType ?? '');
     setPhotoUrl(p.photoUrl ?? '');
     setAvailabilitySummary(p.availabilitySummary ?? '');
     setKindTeacher(p.kinds.includes('TEACHER'));
@@ -107,6 +115,14 @@ export default function ProviderOnboardingPage() {
           'Marca al menos una casilla: educación o cuidado infantil.',
         );
       }
+      if (!streetAddress.trim() || !postalCode.trim() || !unitOrBuilding.trim()) {
+        throw new Error(
+          'Completa dirección, código postal y unidad o edificio de tu espacio de trabajo.',
+        );
+      }
+      if (!dwellingType) {
+        throw new Error('Indica si tu espacio es casa o apartamento / consultorio en edificio.');
+      }
       await patchProviderProfile(getToken, {
         fullName,
         bio,
@@ -114,6 +130,10 @@ export default function ProviderOnboardingPage() {
         focusAreas,
         serviceMode: serviceMode as ServiceMode,
         city,
+        streetAddress,
+        postalCode,
+        unitOrBuilding,
+        dwellingType,
         photoUrl: photoUrl.trim() || undefined,
         availabilitySummary: availabilitySummary.trim() || undefined,
         kinds,
@@ -199,6 +219,37 @@ export default function ProviderOnboardingPage() {
               onChange={(e) => setCity(e.target.value)}
               placeholder="Ej. Medellín"
             />
+          </Field>
+          <div className="lg:col-span-2">
+            <Field label="Dirección de tu espacio (calle y número)">
+              <Input
+                value={streetAddress}
+                onChange={(e) => setStreetAddress(e.target.value)}
+                placeholder="Para citas presenciales en tu ubicación"
+              />
+            </Field>
+          </div>
+          <Field label="Código postal">
+            <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+          </Field>
+          <Field label="Unidad o edificio">
+            <Input
+              value={unitOrBuilding}
+              onChange={(e) => setUnitOrBuilding(e.target.value)}
+              placeholder="Consultorio, piso, torre…"
+            />
+          </Field>
+          <Field label="Tipo de espacio">
+            <Select
+              value={dwellingType}
+              onChange={(e) =>
+                setDwellingType(e.target.value as 'HOUSE' | 'APARTMENT' | '')
+              }
+            >
+              <option value="">Selecciona…</option>
+              <option value="HOUSE">Casa / local en casa</option>
+              <option value="APARTMENT">Apartamento / edificio / consultorio</option>
+            </Select>
           </Field>
           <div className="lg:col-span-2">
             <Field label="Especialidades (separadas por coma)">

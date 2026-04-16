@@ -3,6 +3,7 @@
 import { useAuth } from '@clerk/nextjs';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
 import type {
   EducatorDashboardSnapshot,
@@ -18,11 +19,15 @@ import {
   patchAppointment,
   type AppointmentRow,
 } from '@/features/appointments/api/appointments-api';
+import { AppointmentDetailModal } from '@/features/appointments/components/appointment-detail-modal';
+import { appointmentShowMeetingLink } from '@/features/appointments/lib/appointment-address';
 import {
+  APPOINTMENT_STATUS_LABEL_ES,
   apptStatusBadgeClass,
   apptStatusCardClass,
 } from '@/features/appointments/lib/appointment-status-ui';
 import { Button, buttonStyles } from '@/shared/components/ui/button';
+import { Field, Input } from '@/shared/components/ui/field';
 
 function Surface({
   children,
@@ -62,18 +67,32 @@ function Kpi({
   );
 }
 
-function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }) {
+function DashboardUpcomingSessions({
+  sessions,
+  appointmentRows,
+}: {
+  sessions: EducatorSession[];
+  appointmentRows: AppointmentRow[];
+}) {
   const { getToken } = useAuth();
   const qc = useQueryClient();
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [meetDraftById, setMeetDraftById] = useState<Record<string, string>>({});
+
+  const detailAppointment = useMemo(
+    () => appointmentRows.find((a) => a.id === detailId) ?? null,
+    [appointmentRows, detailId],
+  );
 
   const patchMut = useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: {
+    mutationFn: (payload: {
       id: string;
-      status: AppointmentRow['status'];
-    }) => patchAppointment(getToken, id, { status }),
+      status?: AppointmentRow['status'];
+      meetingUrl?: string;
+    }) => {
+      const { id, ...body } = payload;
+      return patchAppointment(getToken, id, body);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
     },
@@ -96,6 +115,12 @@ function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }
 
   return (
     <>
+      <AppointmentDetailModal
+        open={detailId != null}
+        onClose={() => setDetailId(null)}
+        appointment={detailAppointment}
+        viewerRole="PROVIDER"
+      />
       {patchMut.isError ? (
         <li className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
           {patchMut.error instanceof Error ? patchMut.error.message : 'No se pudo actualizar la cita.'}
@@ -103,20 +128,26 @@ function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }
       ) : null}
       {sessions.map((s) => {
         const pending = s.status === 'PENDING';
+        const row = appointmentRows.find((a) => a.id === s.id);
+        const showMeetOnConfirm =
+          pending &&
+          row &&
+          appointmentShowMeetingLink({
+            providerProfile: row.providerProfile,
+            attendanceMode: row.attendanceMode ?? null,
+          });
+        const meetDraft = meetDraftById[s.id] ?? '';
         return (
           <li
             key={s.id}
-            className={`shadow-sm transition-shadow ${apptStatusCardClass(
-              pending ? 'PENDING' : 'CONFIRMED',
-            )}`}
+            className={`cursor-pointer shadow-sm transition-shadow hover:ring-2 hover:ring-primary/20 ${apptStatusCardClass(s.status)}`}
+            onClick={() => setDetailId(s.id)}
           >
             <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span
-                    className={apptStatusBadgeClass(pending ? 'PENDING' : 'CONFIRMED')}
-                  >
-                    {pending ? 'Pendiente' : 'Confirmada'}
+                  <span className={apptStatusBadgeClass(s.status)}>
+                    {APPOINTMENT_STATUS_LABEL_ES[s.status]}
                   </span>
                   {s.requestsAlternativeSchedule ? (
                     <span className="rounded-md border border-accent/40 bg-accent-soft/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
@@ -139,31 +170,59 @@ function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }
                     {s.notes}
                   </p>
                 ) : null}
+                <p className="text-[11px] font-medium text-primary underline-offset-2">
+                  Toca la tarjeta para ver ubicación o enlace de reunión
+                </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap sm:justify-end">
+              <div className="flex flex-col flex-wrap items-stretch gap-2 sm:shrink-0 sm:items-end">
                 <p className="text-xs font-semibold tabular-nums text-primary sm:text-right">
                   {formatSessionRange(s.startsAt, s.endsAt)}
                 </p>
                 {pending ? (
-                  <div className="flex w-full gap-2 sm:w-auto">
-                    <Button
-                      type="button"
-                      variant="primary"
-                      className="appt-btn-confirm-cta min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
-                      disabled={patchMut.isPending}
-                      onClick={() => patchMut.mutate({ id: s.id, status: 'CONFIRMED' })}
-                    >
-                      {patchMut.isPending ? '…' : 'Confirmar'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
-                      disabled={patchMut.isPending}
-                      onClick={() => patchMut.mutate({ id: s.id, status: 'DECLINED' })}
-                    >
-                      Rechazar
-                    </Button>
+                  <div
+                    className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-48"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {showMeetOnConfirm ? (
+                      <Field label="Enlace Meet / Zoom (opcional)">
+                        <Input
+                          value={meetDraft}
+                          onChange={(e) =>
+                            setMeetDraftById((m) => ({ ...m, [s.id]: e.target.value }))
+                          }
+                          placeholder="https://meet.google.com/…"
+                          className="text-xs"
+                        />
+                      </Field>
+                    ) : null}
+                    <div className="flex w-full gap-2 sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="appt-btn-confirm-cta min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
+                        disabled={patchMut.isPending}
+                        onClick={() =>
+                          patchMut.mutate({
+                            id: s.id,
+                            status: 'CONFIRMED',
+                            ...(meetDraft.trim()
+                              ? { meetingUrl: meetDraft.trim() }
+                              : {}),
+                          })
+                        }
+                      >
+                        {patchMut.isPending ? '…' : 'Confirmar'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
+                        disabled={patchMut.isPending}
+                        onClick={() => patchMut.mutate({ id: s.id, status: 'DECLINED' })}
+                      >
+                        Rechazar
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -207,10 +266,12 @@ export function EducatorDashboardHome({
   snapshot,
   displayName,
   publicProfileId,
+  appointmentRows,
 }: {
   snapshot: EducatorDashboardSnapshot;
   displayName: string;
   publicProfileId: string | null;
+  appointmentRows: AppointmentRow[];
 }) {
   const { profile, kpis, upcomingSessions, leads, activeStudents, topOffers, recentReviews, insights, profileCompletion } =
     snapshot;
@@ -288,7 +349,10 @@ export function EducatorDashboardHome({
             </Link>
           </div>
           <ul className="mt-3 space-y-2">
-            <DashboardUpcomingSessions sessions={upcomingSessions} />
+            <DashboardUpcomingSessions
+              sessions={upcomingSessions}
+              appointmentRows={appointmentRows}
+            />
           </ul>
         </Surface>
 

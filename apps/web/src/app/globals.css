@@ -209,6 +209,17 @@ body {
   color: var(--appt-confirmed-text) !important;
 }
 
+.availability-fc .fc-event.appt-cal-cancelled {
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  background-color: var(--appt-cancelled-bg) !important;
+  border: 1px solid var(--appt-cancelled-border) !important;
+  color: var(--appt-cancelled-text) !important;
+  opacity: 0.9;
+}
+
 /* Tarjetas y badges reutilizables (hub consumidor, panel educador) */
 .appt-status-card {
   border-radius: 0.75rem;

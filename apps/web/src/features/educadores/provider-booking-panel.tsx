@@ -6,7 +6,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { createAppointment } from '@/features/appointments/api/appointments-api';
+import {
+  createAppointment,
+  type AppointmentAttendance,
+} from '@/features/appointments/api/appointments-api';
+import { isBabysitterOnlyProviderKinds } from '@/features/appointments/lib/appointment-address';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
 import { consumerHubHref } from '@/features/consumer/lib/consumer-hub';
 import {
@@ -140,8 +144,29 @@ export function ProviderBookingPanel({
   const [endsLocal, setEndsLocal] = useState('');
   const [note, setNote] = useState('');
   const [childId, setChildId] = useState('');
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [attendanceChoice, setAttendanceChoice] = useState<
+    '' | AppointmentAttendance
+  >('');
 
-  const availabilityBlocks = detail?.availabilityBlocks ?? [];
+  const availabilityBlocks = useMemo(
+    () => detail?.availabilityBlocks ?? [],
+    [detail?.availabilityBlocks],
+  );
+
+  const babysitterOnly = useMemo(
+    () => (detail ? isBabysitterOnlyProviderKinds(detail.kinds) : false),
+    [detail],
+  );
+
+  const needsAttendanceChoice =
+    Boolean(detail?.serviceMode === 'HYBRID' && !babysitterOnly);
+
+  const showMeetingField =
+    detail?.serviceMode === 'ONLINE' ||
+    (detail?.serviceMode === 'HYBRID' &&
+      !babysitterOnly &&
+      attendanceChoice === 'ONLINE');
 
   const bookableSlots = useMemo(
     () => generateBookableSlots(availabilityBlocks, slotLengthMins),
@@ -167,6 +192,8 @@ export function ProviderBookingPanel({
     setEndsLocal('');
     setNote('');
     setChildId('');
+    setMeetingUrl('');
+    setAttendanceChoice('');
   }, [providerProfileId]);
 
   useEffect(() => {
@@ -242,6 +269,23 @@ export function ProviderBookingPanel({
           `Las peticiones con otro horario solo pueden ser dentro de los próximos ${BOOKING_NEAR_WINDOW_DAY_COUNT} días calendario (hasta el ${customAltInputs.lastDayLabel}).`,
         );
       }
+      if (!detail) {
+        throw new Error('Carga la información del educador antes de reservar.');
+      }
+      const hybridNeedsPick =
+        detail.serviceMode === 'HYBRID' && !babysitterOnly;
+      if (
+        hybridNeedsPick &&
+        attendanceChoice !== 'IN_PERSON' &&
+        attendanceChoice !== 'ONLINE'
+      ) {
+        throw new Error('Elige si la sesión será presencial o en línea.');
+      }
+      const includeMeeting =
+        detail.serviceMode === 'ONLINE' ||
+        (detail.serviceMode === 'HYBRID' &&
+          !babysitterOnly &&
+          attendanceChoice === 'ONLINE');
       return createAppointment(getToken, {
         providerProfileId,
         startsAt,
@@ -249,6 +293,13 @@ export function ProviderBookingPanel({
         childId: childId.trim(),
         noteFromFamily: note.trim() || undefined,
         requestsAlternativeSchedule: alternative,
+        ...(hybridNeedsPick &&
+        (attendanceChoice === 'IN_PERSON' || attendanceChoice === 'ONLINE')
+          ? { attendanceMode: attendanceChoice }
+          : {}),
+        ...(includeMeeting && meetingUrl.trim()
+          ? { meetingUrl: meetingUrl.trim() }
+          : {}),
       });
     },
     onSuccess: () => {
@@ -264,16 +315,25 @@ export function ProviderBookingPanel({
         ? createMut.error.message
         : null;
 
+  const attendanceSectionOk =
+    !detail ||
+    detail.serviceMode !== 'HYBRID' ||
+    babysitterOnly ||
+    attendanceChoice === 'IN_PERSON' ||
+    attendanceChoice === 'ONLINE';
+
   const canSubmitPublished =
     bookingMode === 'published' &&
     Boolean(startsLocal && endsLocal && childId.trim()) &&
-    availabilityBlocks.length > 0;
+    availabilityBlocks.length > 0 &&
+    attendanceSectionOk;
 
   const canSubmitCustom =
     bookingMode === 'custom' &&
     Boolean(startsLocal && endsLocal && childId.trim()) &&
     note.trim().length >= CUSTOM_NOTE_MIN &&
-    isCustomAlternativeRangeValid(startsLocal, endsLocal);
+    isCustomAlternativeRangeValid(startsLocal, endsLocal) &&
+    attendanceSectionOk;
 
   if (!viewer.isSignedIn) {
     return (
@@ -410,6 +470,45 @@ export function ProviderBookingPanel({
             <p className="mt-5 text-sm text-red-700">
               Añade al menos un hijo o hija en tu perfil para reservar.
             </p>
+          ) : null}
+
+          {detail ? (
+            <div className="mt-5 space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+              <p className="text-xs font-semibold text-foreground">
+                Detalles de la sesión
+              </p>
+              {needsAttendanceChoice ? (
+                <Field
+                  label="¿Cómo será esta sesión?"
+                  hint="El educador ofrece presencial y en línea; elige una opción."
+                >
+                  <Select
+                    value={attendanceChoice}
+                    onChange={(e) =>
+                      setAttendanceChoice(
+                        (e.target.value || '') as '' | AppointmentAttendance,
+                      )
+                    }
+                  >
+                    <option value="">Selecciona modalidad…</option>
+                    <option value="IN_PERSON">Presencial</option>
+                    <option value="ONLINE">En línea</option>
+                  </Select>
+                </Field>
+              ) : null}
+              {showMeetingField ? (
+                <Field
+                  label="Enlace Meet / Zoom (opcional)"
+                  hint="Puedes dejarlo vacío y acordarlo después por mensaje."
+                >
+                  <Input
+                    value={meetingUrl}
+                    onChange={(e) => setMeetingUrl(e.target.value)}
+                    placeholder="https://meet.google.com/…"
+                  />
+                </Field>
+              ) : null}
+            </div>
           ) : null}
 
           {bookingMode === 'published' ? (

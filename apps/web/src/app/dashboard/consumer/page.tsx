@@ -4,12 +4,10 @@ import { useAuth, useUser } from '@clerk/nextjs';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-import {
-  listMyAppointments,
-  patchAppointment,
-} from '@/features/appointments/api/appointments-api';
+import { listMyAppointments, patchAppointment } from '@/features/appointments/api/appointments-api';
+import { AppointmentDetailModal } from '@/features/appointments/components/appointment-detail-modal';
 import {
   bootstrapQueryKey,
   fetchBootstrap,
@@ -76,6 +74,7 @@ function ConsumerHubContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
+  const [detailApptId, setDetailApptId] = useState<string | null>(null);
 
   const seccion = parseConsumerHubSection(searchParams.get('seccion'));
 
@@ -131,6 +130,16 @@ function ConsumerHubContent() {
     );
   }, [profileQuery.data, user]);
 
+  const appointmentsList = useMemo(
+    () => appointmentsQuery.data ?? [],
+    [appointmentsQuery.data],
+  );
+
+  const detailAppointment = useMemo(
+    () => appointmentsList.find((a) => a.id === detailApptId) ?? null,
+    [appointmentsList, detailApptId],
+  );
+
   if (
     bootstrapQuery.isLoading ||
     profileQuery.isLoading ||
@@ -165,12 +174,11 @@ function ConsumerHubContent() {
     user?.primaryEmailAddress?.emailAddress ?? bUser?.email ?? '—';
 
   const now = new Date();
-  const allAppts = appointmentsQuery.data ?? [];
-  const upcoming = allAppts.filter(
+  const upcoming = appointmentsList.filter(
     (a) =>
       !terminalStatuses.has(a.status) && new Date(a.endsAt) >= now,
   );
-  const history = allAppts.filter(
+  const history = appointmentsList.filter(
     (a) => terminalStatuses.has(a.status) || new Date(a.endsAt) < now,
   );
 
@@ -183,6 +191,12 @@ function ConsumerHubContent() {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppointmentDetailModal
+        open={detailApptId != null}
+        onClose={() => setDetailApptId(null)}
+        appointment={detailAppointment}
+        viewerRole="CONSUMER"
+      />
       <AppHeader logoHref="/explorar" pageLabel="Familia" links={hubLinks} />
       <main className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
         <nav
@@ -295,6 +309,7 @@ function ConsumerHubContent() {
                 emptyMessage="No tienes citas activas. Explora educadores y solicita una dentro de sus ventanas publicadas."
                 onManageClick={() => setSeccion('citas')}
                 manageLabel="Ver todas las citas"
+                onSelectAppointment={(a) => setDetailApptId(a.id)}
               />
               <Link
                 href="/explorar"
@@ -346,7 +361,7 @@ function ConsumerHubContent() {
                 ) : null}
               </div>
               <div className="mt-4">
-                <ConsumerLessonsCalendar appointments={allAppts} />
+                <ConsumerLessonsCalendar appointments={appointmentsList} />
               </div>
             </section>
           </>
@@ -428,7 +443,8 @@ function ConsumerHubContent() {
                   {upcoming.map((a) => (
                     <li
                       key={a.id}
-                      className={`px-4 py-3 text-sm ${apptStatusCardClass(a.status)}`}
+                      className={`cursor-pointer px-4 py-3 text-sm shadow-sm transition-shadow hover:ring-2 hover:ring-primary/20 ${apptStatusCardClass(a.status)}`}
+                      onClick={() => setDetailApptId(a.id)}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
@@ -451,13 +467,19 @@ function ConsumerHubContent() {
                               Horario propuesto (el educador lo revisa)
                             </p>
                           ) : null}
+                          <p className="mt-2 text-[11px] font-medium text-primary">
+                            Toca para ver ubicación o enlace de videollamada
+                          </p>
                         </div>
                         {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (
                           <Button
                             variant="secondary"
                             className="shrink-0 text-xs"
                             disabled={cancelMut.isPending}
-                            onClick={() => cancelMut.mutate(a.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              cancelMut.mutate(a.id);
+                            }}
                           >
                             Cancelar
                           </Button>
@@ -482,7 +504,8 @@ function ConsumerHubContent() {
                   {history.map((a) => (
                     <li
                       key={a.id}
-                      className={`flex flex-wrap justify-between gap-2 border-b border-border py-2 pl-2 last:border-0 ${apptStatusHistoryClass(a.status)}`}
+                      className={`flex cursor-pointer flex-wrap justify-between gap-2 border-b border-border py-2 pl-2 last:border-0 hover:bg-muted/40 ${apptStatusHistoryClass(a.status)}`}
+                      onClick={() => setDetailApptId(a.id)}
                     >
                       <span className="font-medium text-foreground">
                         {a.child?.firstName ?? '—'}

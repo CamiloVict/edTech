@@ -55,6 +55,10 @@ export class ProviderProfilesService {
         focusAreas: dto.focusAreas ?? undefined,
         serviceMode: dto.serviceMode ?? undefined,
         city: dto.city ?? undefined,
+        streetAddress: dto.streetAddress ?? undefined,
+        postalCode: dto.postalCode ?? undefined,
+        unitOrBuilding: dto.unitOrBuilding ?? undefined,
+        dwellingType: dto.dwellingType ?? undefined,
         photoUrl: dto.photoUrl ?? undefined,
         availabilitySummary: dto.availabilitySummary ?? undefined,
         kinds: dto.kinds ?? undefined,
@@ -95,6 +99,18 @@ export class ProviderProfilesService {
     }
     if (!current.city?.trim()) {
       throw new BadRequestException('city is required to complete onboarding');
+    }
+    if (!current.streetAddress?.trim()) {
+      throw new BadRequestException('streetAddress is required to complete onboarding');
+    }
+    if (!current.postalCode?.trim()) {
+      throw new BadRequestException('postalCode is required to complete onboarding');
+    }
+    if (!current.unitOrBuilding?.trim()) {
+      throw new BadRequestException('unitOrBuilding is required to complete onboarding');
+    }
+    if (!current.dwellingType) {
+      throw new BadRequestException('dwellingType is required to complete onboarding');
     }
 
     await this.prisma.$transaction([

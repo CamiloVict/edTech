@@ -48,6 +48,10 @@ export class ConsumerProfilesService {
         phone: dto.phone ?? undefined,
         city: dto.city ?? undefined,
         relationshipToChild: dto.relationshipToChild ?? undefined,
+        streetAddress: dto.streetAddress ?? undefined,
+        postalCode: dto.postalCode ?? undefined,
+        unitOrBuilding: dto.unitOrBuilding ?? undefined,
+        dwellingType: dto.dwellingType ?? undefined,
       },
       include: { children: true },
     });
@@ -124,6 +128,18 @@ export class ConsumerProfilesService {
     }
     if (!withChildren.city?.trim()) {
       throw new BadRequestException('city is required to complete onboarding');
+    }
+    if (!withChildren.streetAddress?.trim()) {
+      throw new BadRequestException('streetAddress is required to complete onboarding');
+    }
+    if (!withChildren.postalCode?.trim()) {
+      throw new BadRequestException('postalCode is required to complete onboarding');
+    }
+    if (!withChildren.unitOrBuilding?.trim()) {
+      throw new BadRequestException('unitOrBuilding is required to complete onboarding');
+    }
+    if (!withChildren.dwellingType) {
+      throw new BadRequestException('dwellingType is required to complete onboarding');
     }
     if (!withChildren.relationshipToChild?.trim()) {
       throw new BadRequestException(

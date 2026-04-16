@@ -98,6 +98,17 @@ export function buildProfileCompletionFromProvider(
       impactLabel: 'Búsqueda local',
     },
     {
+      id: 'address',
+      label: 'Dirección y código postal',
+      done: Boolean(
+        p.streetAddress?.trim() &&
+          p.postalCode?.trim() &&
+          p.unitOrBuilding?.trim() &&
+          p.dwellingType,
+      ),
+      impactLabel: 'Citas presenciales',
+    },
+    {
       id: 'photo',
       label: 'Foto de perfil (URL)',
       done: Boolean(p.photoUrl?.trim()),
@@ -134,27 +145,20 @@ export function buildProfileCompletionFromProvider(
   return { scorePercent, items };
 }
 
-function appointmentToSession(
-  a: AppointmentRow,
-  serviceMode: ServiceMode,
-): EducatorSession | null {
-  if (TERMINAL.has(a.status)) return null;
-  if (a.status !== 'PENDING' && a.status !== 'CONFIRMED') return null;
-  const ends = new Date(a.endsAt);
-  if (Number.isNaN(ends.getTime()) || ends < new Date()) return null;
-
+function appointmentToSession(a: AppointmentRow): EducatorSession {
   const family = a.consumerProfile.fullName?.trim() || 'Familia';
   const child = a.child?.firstName ?? '—';
+  const modality = defaultServiceMode(a.providerProfile.serviceMode as ServiceMode | null);
 
   return {
     id: a.id,
     startsAt: a.startsAt,
     endsAt: a.endsAt,
-    status: a.status === 'PENDING' ? 'PENDING' : 'CONFIRMED',
+    status: a.status,
     studentName: child,
     familyName: family,
     childName: child,
-    modality: serviceMode,
+    modality,
     offerTitle: a.requestsAlternativeSchedule
       ? 'Cita · horario propuesto'
       : 'Cita',
@@ -163,7 +167,7 @@ function appointmentToSession(
   };
 }
 
-/** Pendientes de aprobación primero; luego por hora de inicio. */
+/** Pendientes primero; luego por hora de inicio (más próximas arriba). */
 export function sortUpcomingEducatorSessions(
   sessions: EducatorSession[],
 ): EducatorSession[] {
@@ -334,11 +338,8 @@ export function buildEducatorDashboardSnapshot(
   input: BuildEducatorDashboardInput,
 ): EducatorDashboardSnapshot {
   const now = new Date();
-  const sm = defaultServiceMode(input.providerProfile.serviceMode);
   const sessions = sortUpcomingEducatorSessions(
-    input.appointments
-      .map((a) => appointmentToSession(a, sm))
-      .filter((x): x is EducatorSession => x != null),
+    input.appointments.map((a) => appointmentToSession(a)).slice(0, 60),
   );
 
   const profile = educatorProfileFromProvider(

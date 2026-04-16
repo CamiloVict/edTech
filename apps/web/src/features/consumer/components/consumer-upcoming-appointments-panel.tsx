@@ -36,6 +36,7 @@ export function ConsumerUpcomingAppointmentsPanel({
   manageHref,
   manageLabel = 'Ver todas las citas',
   onManageClick,
+  onSelectAppointment,
 }: {
   appointments: AppointmentRow[];
   maxItems?: number;
@@ -44,6 +45,8 @@ export function ConsumerUpcomingAppointmentsPanel({
   manageHref?: string;
   manageLabel?: string;
   onManageClick?: () => void;
+  /** Si se define, la tarjeta abre el detalle (p. ej. modal en el padre). */
+  onSelectAppointment?: (a: AppointmentRow) => void;
 }) {
   const { getToken } = useAuth();
   const qc = useQueryClient();
@@ -89,10 +92,18 @@ export function ConsumerUpcomingAppointmentsPanel({
           {rows.map((a) => (
             <li
               key={a.id}
-              className={`px-4 py-3 text-sm ${apptStatusCardClass(a.status)}`}
+              className={`px-4 py-3 text-sm ${apptStatusCardClass(a.status)} ${
+                onSelectAppointment
+                  ? 'cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/20'
+                  : ''
+              }`}
+              onClick={() => onSelectAppointment?.(a)}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
+                <div
+                  role={onSelectAppointment ? 'button' : undefined}
+                  className="min-w-0 flex-1"
+                >
                   <p className="text-xs font-semibold text-foreground">
                     Para {a.child?.firstName ?? '—'}
                   </p>
@@ -112,13 +123,21 @@ export function ConsumerUpcomingAppointmentsPanel({
                       Horario propuesto (el educador lo revisa)
                     </p>
                   ) : null}
+                  {onSelectAppointment ? (
+                    <p className="mt-2 text-[11px] font-medium text-primary underline-offset-2">
+                      Toca para ver ubicación o enlace de videollamada
+                    </p>
+                  ) : null}
                 </div>
                 {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (
                   <Button
                     variant="secondary"
                     className="shrink-0 text-xs"
                     disabled={cancelMut.isPending}
-                    onClick={() => cancelMut.mutate(a.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      cancelMut.mutate(a.id);
+                    }}
                   >
                     Cancelar
                   </Button>

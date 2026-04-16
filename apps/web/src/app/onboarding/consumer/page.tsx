@@ -22,7 +22,7 @@ import {
   HelpCallout,
 } from '@/shared/components/friendly-form-shell';
 import { Button } from '@/shared/components/ui/button';
-import { Field, Input } from '@/shared/components/ui/field';
+import { Field, Input, Select } from '@/shared/components/ui/field';
 import { apiRequest } from '@/shared/lib/api';
 
 type ChildRow = {
@@ -62,6 +62,10 @@ export default function ConsumerOnboardingPage() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
+  const [streetAddress, setStreetAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [unitOrBuilding, setUnitOrBuilding] = useState('');
+  const [dwellingType, setDwellingType] = useState<'HOUSE' | 'APARTMENT' | ''>('');
   const [relationship, setRelationship] = useState('');
   const [children, setChildren] = useState<ChildRow[]>([newRow()]);
 
@@ -71,6 +75,10 @@ export default function ConsumerOnboardingPage() {
     setFullName(p.fullName ?? '');
     setPhone(p.phone ?? '');
     setCity(p.city ?? '');
+    setStreetAddress(p.streetAddress ?? '');
+    setPostalCode(p.postalCode ?? '');
+    setUnitOrBuilding(p.unitOrBuilding ?? '');
+    setDwellingType(p.dwellingType ?? '');
     setRelationship(p.relationshipToChild ?? '');
     if (p.children.length) {
       setChildren(
@@ -105,10 +113,22 @@ export default function ConsumerOnboardingPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
+      if (!streetAddress.trim() || !postalCode.trim() || !unitOrBuilding.trim()) {
+        throw new Error(
+          'Completa dirección, código postal y unidad o edificio (paso «Tú»).',
+        );
+      }
+      if (!dwellingType) {
+        throw new Error('Indica si tu domicilio es casa o apartamento.');
+      }
       await patchConsumerProfile(getToken, {
         fullName,
         phone,
         city,
+        streetAddress,
+        postalCode,
+        unitOrBuilding,
+        dwellingType,
         relationshipToChild: relationship,
       });
 
@@ -226,6 +246,37 @@ export default function ConsumerOnboardingPage() {
               onChange={(e) => setCity(e.target.value)}
               placeholder="Ej. Bogotá"
             />
+          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Dirección (calle y número)">
+              <Input
+                value={streetAddress}
+                onChange={(e) => setStreetAddress(e.target.value)}
+                placeholder="Para citas en tu domicilio"
+              />
+            </Field>
+          </div>
+          <Field label="Código postal">
+            <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+          </Field>
+          <Field label="Unidad o edificio">
+            <Input
+              value={unitOrBuilding}
+              onChange={(e) => setUnitOrBuilding(e.target.value)}
+              placeholder="Torre, interior, conjunto…"
+            />
+          </Field>
+          <Field label="Tipo de vivienda">
+            <Select
+              value={dwellingType}
+              onChange={(e) =>
+                setDwellingType(e.target.value as 'HOUSE' | 'APARTMENT' | '')
+              }
+            >
+              <option value="">Selecciona…</option>
+              <option value="HOUSE">Casa</option>
+              <option value="APARTMENT">Apartamento</option>
+            </Select>
           </Field>
           <div className="sm:col-span-2">
             <Field label="Relación con el menor">
