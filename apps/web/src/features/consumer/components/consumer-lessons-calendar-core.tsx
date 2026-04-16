@@ -9,6 +9,7 @@ import FullCalendar from '@fullcalendar/react';
 import { useMemo } from 'react';
 
 import type { AppointmentRow } from '@/features/appointments/api/appointments-api';
+import { appointmentChildToneClass } from '@/features/consumer/lib/child-appointment-tone';
 
 function scheduledLessons(appointments: AppointmentRow[]) {
   return appointments.filter(
@@ -21,14 +22,17 @@ function toEvents(appointments: AppointmentRow[]): EventInput[] {
     const child = a.child?.firstName ?? '—';
     const edu = a.providerProfile.fullName?.trim() || 'Educador';
     const pending = a.status === 'PENDING';
+    const tone = appointmentChildToneClass(a.childId);
     return {
       id: a.id,
       title: `${child} · ${edu}`,
       start: a.startsAt,
       end: a.endsAt,
-      classNames: pending
-        ? ['consumer-lesson-pending']
-        : ['consumer-lesson-confirmed'],
+      classNames: [
+        'consumer-appt-cal-event',
+        tone,
+        ...(pending ? ['consumer-appt-cal-pending'] : []),
+      ],
     };
   });
 }

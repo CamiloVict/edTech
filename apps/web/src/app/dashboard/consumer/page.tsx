@@ -23,6 +23,7 @@ import {
   type ConsumerHubSection,
 } from '@/features/consumer/lib/consumer-hub';
 import { getConsumerProfile } from '@/features/consumer/api/consumer-api';
+import { appointmentChildToneClass } from '@/features/consumer/lib/child-appointment-tone';
 import { pathAfterBootstrap } from '@/shared/lib/routing';
 import { AppHeader } from '@/shared/components/app-header';
 import { Button } from '@/shared/components/ui/button';
@@ -316,11 +317,13 @@ function ConsumerHubContent() {
                   {upcoming.slice(0, 3).map((a) => (
                     <li
                       key={a.id}
-                      className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
+                      className={`rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm consumer-appt-card ${appointmentChildToneClass(a.childId)} ${a.status === 'PENDING' ? 'consumer-appt-card-pending' : ''}`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-xs font-medium text-accent">
+                          <p
+                            className={`text-xs font-semibold consumer-appt-child-label ${appointmentChildToneClass(a.childId)}`}
+                          >
                             Para {a.child?.firstName ?? '—'}
                           </p>
                           <p className="font-semibold text-foreground">
@@ -368,8 +371,9 @@ function ConsumerHubContent() {
                     Calendario de lecciones
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Citas pendientes o confirmadas. Cambia a semana o lista para
-                    ver horarios con más detalle.
+                    Citas pendientes o confirmadas. Cada hijo tiene un color; las
+                    pendientes llevan un contorno claro. Cambia a semana o lista
+                    para ver horarios con más detalle.
                   </p>
                 </div>
                 <button
@@ -380,6 +384,25 @@ function ConsumerHubContent() {
                   Gestionar citas
                 </button>
               </div>
+              {profile.children.length > 0 ? (
+                <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    Leyenda por hijo:
+                  </span>
+                  {profile.children.map((c) => (
+                    <span
+                      key={c.id}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <span
+                        className={`consumer-appt-legend-dot ${appointmentChildToneClass(c.id)}`}
+                        aria-hidden
+                      />
+                      {c.firstName}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
               <div className="mt-4">
                 <ConsumerLessonsCalendar appointments={allAppts} />
               </div>
@@ -424,6 +447,25 @@ function ConsumerHubContent() {
                   Buscar educadores
                 </Link>
               </div>
+              {profile.children.length > 0 ? (
+                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    Color por hijo:
+                  </span>
+                  {profile.children.map((c) => (
+                    <span
+                      key={c.id}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <span
+                        className={`consumer-appt-legend-dot ${appointmentChildToneClass(c.id)}`}
+                        aria-hidden
+                      />
+                      {c.firstName}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
               {upcoming.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">
                   No tienes citas activas. Explora educadores y solicita una
@@ -434,11 +476,13 @@ function ConsumerHubContent() {
                   {upcoming.map((a) => (
                     <li
                       key={a.id}
-                      className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
+                      className={`rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm consumer-appt-card ${appointmentChildToneClass(a.childId)} ${a.status === 'PENDING' ? 'consumer-appt-card-pending' : ''}`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-xs font-medium text-accent">
+                          <p
+                            className={`text-xs font-semibold consumer-appt-child-label ${appointmentChildToneClass(a.childId)}`}
+                          >
                             Para {a.child?.firstName ?? '—'}
                           </p>
                           <p className="font-semibold text-foreground">
@@ -486,10 +530,12 @@ function ConsumerHubContent() {
                   {history.map((a) => (
                     <li
                       key={a.id}
-                      className="flex flex-wrap justify-between gap-2 border-b border-border py-2 last:border-0"
+                      className={`consumer-appt-history-row flex flex-wrap justify-between gap-2 border-b border-border py-2 last:border-0 ${appointmentChildToneClass(a.childId)}`}
                     >
                       <span className="font-medium text-foreground">
-                        <span className="text-accent">
+                        <span
+                          className={`consumer-appt-child-label ${appointmentChildToneClass(a.childId)}`}
+                        >
                           {a.child?.firstName ?? '—'}
                         </span>
                         {' · '}
