@@ -1,15 +1,24 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 
-import type { EducatorDashboardSnapshot } from '@/features/educator-hub/domain/types';
+import type {
+  EducatorDashboardSnapshot,
+  EducatorSession,
+} from '@/features/educator-hub/domain/types';
 import {
   formatMoneyMinor,
   formatPercent,
   formatSessionRange,
   formatShortDateTime,
 } from '@/features/educator-hub/application/educator-format';
-import { buttonStyles } from '@/shared/components/ui/button';
+import {
+  patchAppointment,
+  type AppointmentRow,
+} from '@/features/appointments/api/appointments-api';
+import { Button, buttonStyles } from '@/shared/components/ui/button';
 
 function Surface({
   children,
@@ -46,6 +55,125 @@ function Kpi({
         <p className="mt-1 text-xs text-[var(--muted-foreground)]">{hint}</p>
       ) : null}
     </div>
+  );
+}
+
+function DashboardUpcomingSessions({ sessions }: { sessions: EducatorSession[] }) {
+  const { getToken } = useAuth();
+  const qc = useQueryClient();
+
+  const patchMut = useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: AppointmentRow['status'];
+    }) => patchAppointment(getToken, id, { status }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+    },
+  });
+
+  if (sessions.length === 0) {
+    return (
+      <li className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-5 text-center text-sm text-muted-foreground">
+        No tienes citas futuras pendientes o confirmadas. Publica disponibilidad y revisa solicitudes en{' '}
+        <Link
+          href="/dashboard/provider/agenda"
+          className="font-semibold text-[var(--primary-soft)] underline underline-offset-2 hover:text-[var(--primary)]"
+        >
+          Agenda y horarios
+        </Link>
+        .
+      </li>
+    );
+  }
+
+  return (
+    <>
+      {patchMut.isError ? (
+        <li className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+          {patchMut.error instanceof Error ? patchMut.error.message : 'No se pudo actualizar la cita.'}
+        </li>
+      ) : null}
+      {sessions.map((s) => {
+        const pending = s.status === 'PENDING';
+        return (
+          <li
+            key={s.id}
+            className={`rounded-xl border shadow-sm transition-shadow ${
+              pending
+                ? 'border-accent/50 bg-accent-soft/20 ring-1 ring-accent/25'
+                : 'border-border bg-card ring-1 ring-border/80'
+            }`}
+          >
+            <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {pending ? (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      Pendiente
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Confirmada
+                    </span>
+                  )}
+                  {s.requestsAlternativeSchedule ? (
+                    <span className="rounded-md border border-accent/40 bg-accent-soft/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      Horario propuesto
+                    </span>
+                  ) : null}
+                </div>
+                <p className="truncate text-sm font-semibold text-foreground">{s.childName}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {s.offerTitle}
+                  <span className="text-muted-foreground/70"> · </span>
+                  {s.familyName}
+                </p>
+                {s.notes ? (
+                  <p
+                    className="line-clamp-2 rounded-md border border-border bg-background px-2 py-1 text-[11px] leading-snug text-foreground"
+                    title={s.notes}
+                  >
+                    <span className="font-semibold text-primary">Nota: </span>
+                    {s.notes}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap sm:justify-end">
+                <p className="text-xs font-semibold tabular-nums text-primary sm:text-right">
+                  {formatSessionRange(s.startsAt, s.endsAt)}
+                </p>
+                {pending ? (
+                  <div className="flex w-full gap-2 sm:w-auto">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="min-w-0 flex-1 px-3 py-1.5 text-xs bg-accent text-primary shadow-sm hover:bg-accent-hover sm:flex-initial sm:min-w-22"
+                      disabled={patchMut.isPending}
+                      onClick={() => patchMut.mutate({ id: s.id, status: 'CONFIRMED' })}
+                    >
+                      {patchMut.isPending ? '…' : 'Confirmar'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-w-0 flex-1 px-3 py-1.5 text-xs sm:flex-initial sm:min-w-22"
+                      disabled={patchMut.isPending}
+                      onClick={() => patchMut.mutate({ id: s.id, status: 'DECLINED' })}
+                    >
+                      Rechazar
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </>
   );
 }
 
@@ -161,51 +289,8 @@ export function EducatorDashboardHome({
               Ir a agenda
             </Link>
           </div>
-          <ul className="mt-4 space-y-3">
-            {upcomingSessions.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--muted)]/30 px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
-                No tienes citas futuras pendientes o confirmadas. Publica disponibilidad y revisa
-                solicitudes en{' '}
-                <Link
-                  href="/dashboard/provider/agenda"
-                  className="font-semibold text-[var(--primary)] underline underline-offset-2"
-                >
-                  Agenda y horarios
-                </Link>
-                .
-              </li>
-            ) : (
-              upcomingSessions.map((s) => {
-                const pending = s.status === 'PENDING';
-                return (
-                  <li
-                    key={s.id}
-                    className={`flex flex-col gap-1 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
-                      pending
-                        ? 'border-amber-400/80 bg-amber-50/90 ring-1 ring-amber-300/50 dark:bg-amber-950/25 dark:ring-amber-700/40'
-                        : 'border-[var(--border)] bg-[var(--background)]'
-                    }`}
-                  >
-                    <div>
-                      {pending ? (
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-200">
-                          Requiere tu aprobación
-                        </p>
-                      ) : null}
-                      <p className="font-medium text-[var(--foreground)]">{s.childName}</p>
-                      <p className="text-sm text-[var(--muted-foreground)]">{s.offerTitle}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">{s.familyName}</p>
-                    </div>
-                    <div className="text-right text-sm">
-                      <p className="font-medium text-[var(--primary)]">{formatSessionRange(s.startsAt, s.endsAt)}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        {pending ? 'Pendiente de confirmación' : 'Confirmada'}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })
-            )}
+          <ul className="mt-3 space-y-2">
+            <DashboardUpcomingSessions sessions={upcomingSessions} />
           </ul>
         </Surface>
 

@@ -69,6 +69,8 @@ export type EducatorSession = {
   modality: ServiceMode;
   offerTitle: string;
   notes?: string;
+  /** Copiado de la cita para mostrar aviso en el panel. */
+  requestsAlternativeSchedule?: boolean;
 };
 
 export type EducatorLead = {

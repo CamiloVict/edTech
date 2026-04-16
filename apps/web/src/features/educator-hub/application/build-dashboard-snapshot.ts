@@ -157,6 +157,7 @@ function appointmentToSession(
       ? 'Cita · horario propuesto'
       : 'Cita',
     notes: a.noteFromFamily ?? undefined,
+    requestsAlternativeSchedule: Boolean(a.requestsAlternativeSchedule),
   };
 }
 
