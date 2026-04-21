@@ -11,6 +11,7 @@ import {
 import { listProviderAppointments } from '@/features/appointments/api/appointments-api';
 import { buildEducatorDashboardSnapshot } from '@/features/educator-hub/application/build-dashboard-snapshot';
 import { EducatorDashboardHome } from '@/features/educator-hub/presentation/views/educator-dashboard-home';
+import { getProviderConnectStatus } from '@/features/payments/api/payments-api';
 import {
   bootstrapQueryKey,
   fetchBootstrap,
@@ -53,6 +54,12 @@ export default function ProviderDashboardPage() {
     enabled: isProvider,
   });
 
+  const connectQuery = useQuery({
+    queryKey: ['payments', 'provider', 'connect-status'],
+    queryFn: () => getProviderConnectStatus(getToken),
+    enabled: isProvider,
+  });
+
   const snapshot = useMemo(() => {
     const p = profileQuery.data;
     if (!p) return null;
@@ -63,6 +70,7 @@ export default function ProviderDashboardPage() {
       appointments: appointmentsQuery.data ?? [],
       availabilityBlocks: blocksQuery.data ?? [],
       rates: ratesQuery.data ?? [],
+      connectStatus: connectQuery.data ?? null,
     });
   }, [
     profileQuery.data,
@@ -70,6 +78,7 @@ export default function ProviderDashboardPage() {
     appointmentsQuery.data,
     blocksQuery.data,
     ratesQuery.data,
+    connectQuery.data,
   ]);
 
   const displayName = useMemo(() => {
@@ -87,7 +96,8 @@ export default function ProviderDashboardPage() {
     profileQuery.isLoading ||
     appointmentsQuery.isLoading ||
     blocksQuery.isLoading ||
-    ratesQuery.isLoading;
+    ratesQuery.isLoading ||
+    connectQuery.isLoading;
 
   if (loading) {
     return (

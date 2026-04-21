@@ -103,9 +103,14 @@ function AddCardForm() {
 
 type ConsumerPaymentsPanelProps = {
   embedded?: boolean;
+  /** Menos titulares: útil dentro del onboarding. */
+  compact?: boolean;
 };
 
-export function ConsumerPaymentsPanel({ embedded = false }: ConsumerPaymentsPanelProps) {
+export function ConsumerPaymentsPanel({
+  embedded = false,
+  compact = false,
+}: ConsumerPaymentsPanelProps) {
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -146,13 +151,19 @@ export function ConsumerPaymentsPanel({ embedded = false }: ConsumerPaymentsPane
 
   const content = (
     <>
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Pagos de familia</h1>
+      {compact ? (
         <p className="text-sm text-[var(--muted-foreground)]">
-          Puedes crear tu perfil sin tarjeta, pero para agendar citas necesitas un método
-          de pago por defecto.
+          Opcional ahora: si lo omites, te lo recordaremos al agendar una cita.
         </p>
-      </header>
+      ) : (
+        <header className="space-y-2">
+          <h1 className="text-2xl font-semibold">Pagos de familia</h1>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Puedes crear tu perfil sin tarjeta, pero para agendar citas necesitas un método
+            de pago por defecto.
+          </p>
+        </header>
+      )}
 
       {!hasStripeKey || !stripePromise ? (
         <section className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
@@ -166,7 +177,9 @@ export function ConsumerPaymentsPanel({ embedded = false }: ConsumerPaymentsPane
       )}
 
       <section className="rounded-xl border p-4 space-y-4">
-        <h2 className="text-lg font-semibold">Métodos guardados</h2>
+        <h2 className={compact ? 'text-base font-semibold' : 'text-lg font-semibold'}>
+          Métodos guardados
+        </h2>
         {methodsQuery.isLoading ? <p>Cargando...</p> : null}
         {methodsQuery.data?.length === 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">
