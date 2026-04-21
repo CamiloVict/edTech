@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect } from 'react';
 
 import type { AppointmentRow } from '@/features/appointments/api/appointments-api';
@@ -16,6 +17,7 @@ import {
   googleMapsSearchUrl,
   wazeSearchUrl,
 } from '@/features/appointments/lib/appointment-address';
+import { appointmentEligibleForHelp } from '@/features/support/support-eligibility';
 import type { ServiceMode } from '@/shared/types/bootstrap';
 import { buttonStyles } from '@/shared/components/ui/button';
 
@@ -152,6 +154,12 @@ export function AppointmentDetailModal({
     viewerRole === 'CONSUMER'
       ? appointment.providerProfile.fullName?.trim() || 'Educador/a'
       : appointment.consumerProfile.fullName?.trim() || 'Familia';
+
+  const helpBase =
+    viewerRole === 'CONSUMER'
+      ? '/dashboard/consumer/soporte/nuevo'
+      : '/dashboard/provider/soporte/nuevo';
+  const showHelp = appointmentEligibleForHelp(appointment);
 
   const showMeet = appointmentShowMeetingLink({
     providerProfile: appointment.providerProfile,
@@ -325,6 +333,24 @@ export function AppointmentDetailModal({
             viewerRole={viewerRole}
             counterpartyName={counterpartyName}
           />
+
+          {showHelp ? (
+            <div className="rounded-xl border border-border bg-background p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Ayuda con esta cita
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Si hubo un problema con la sesión o el cobro, abre un ticket vinculado a esta cita.
+              </p>
+              <Link
+                href={`${helpBase}?appointmentId=${encodeURIComponent(appointment.id)}`}
+                onClick={onClose}
+                className={buttonStyles('secondary', 'mt-3 inline-block px-4 py-2 text-xs')}
+              >
+                Obtener ayuda
+              </Link>
+            </div>
+          ) : null}
 
           {appointment.requestsAlternativeSchedule ? (
             <p className="text-xs font-medium text-violet-800">

@@ -82,6 +82,10 @@ model User {
   consumerProfile ConsumerProfile?
   providerProfile ProviderProfile?
 
+  supportTicketsCreated     SupportTicket[]         @relation("SupportTicketCreator")
+  supportTicketMessages     SupportTicketMessage[]  @relation("SupportTicketMessageAuthor")
+  supportTicketEvidenceUploaded SupportTicketEvidence[] @relation("SupportTicketEvidenceUploader")
+
   @@index([email])
   @@map("users")
 }
@@ -143,6 +147,7 @@ model ProviderProfile {
   rates                 ProviderRate[]
   availabilityBlocks    ProviderAvailabilityBlock[]
   appointments          Appointment[]
+  supportTickets        SupportTicket[]
 
   @@index([isAvailable])
   @@map("provider_profiles")
@@ -208,6 +213,7 @@ model Appointment {
   updatedAt           DateTime           @updatedAt @map("updated_at")
 
   reviews             AppointmentReview[]
+  supportTickets      SupportTicket[]
 
   @@index([providerProfileId, startsAt])
   @@index([consumerProfileId, startsAt])
@@ -244,4 +250,123 @@ model Child {
 
   @@index([consumerProfileId])
   @@map("children")
+}
+
+/// Estado del ticket de soporte / reclamo ligado a una cita.
+enum SupportTicketStatus {
+  OPEN
+  PENDING_USER
+  PENDING_AGENT
+  RESOLVED
+  ESCALATED
+}
+
+enum SupportResolutionKind {
+  NONE
+  AUTO
+  HUMAN
+}
+
+enum SupportMessageAuthor {
+  SYSTEM
+  USER
+  AGENT
+}
+
+/// Categorías guiadas (árbol simple: parentCode opcional).
+model SupportComplaintCategory {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  labelEs       String   @map("label_es")
+  descriptionEs String?  @map("description_es") @db.Text
+  parentCode    String?  @map("parent_code")
+  sortOrder     Int      @default(0) @map("sort_order")
+  active        Boolean  @default(true)
+  /// Pistas para el front (pasos, copy); extensible sin deploy.
+  flowHintJson  Json?    @map("flow_hint_json")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([parentCode])
+  @@map("support_complaint_categories")
+}
+
+/// Reglas de resolución automática evaluadas en orden de `priority` descendente.
+model SupportResolutionRule {
+  id             String   @id @default(cuid())
+  categoryCode   String   @map("category_code")
+  name           String
+  priority       Int      @default(0)
+  conditionsJson Json     @default("{}") @map("conditions_json")
+  actionType     String   @map("action_type")
+  actionPayload  Json?    @map("action_payload")
+  autoConfidence Decimal  @default(0.700) @map("auto_confidence") @db.Decimal(4, 3)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([categoryCode, active])
+  @@index([priority])
+  @@map("support_resolution_rules")
+}
+
+model SupportTicket {
+  id                     String                @id @default(cuid())
+  appointmentId        String                @map("appointment_id")
+  appointment          Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  createdByUserId      String                @map("created_by_user_id")
+  createdBy            User                  @relation("SupportTicketCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  providerProfileId    String                @map("provider_profile_id")
+  providerProfile      ProviderProfile       @relation(fields: [providerProfileId], references: [id], onDelete: Restrict)
+  categoryCode         String                @map("category_code")
+  status               SupportTicketStatus
+  resolutionKind       SupportResolutionKind @map("resolution_kind")
+  formalComplaint      Boolean               @default(false) @map("formal_complaint")
+  formalTrackingNumber String?               @unique @map("formal_tracking_number")
+  metadata             Json                  @default("{}")
+  proposedResolution   Json?                 @map("proposed_resolution")
+  autoConfidence       Decimal?              @map("auto_confidence") @db.Decimal(4, 3)
+  abuseScoreSnapshot   Decimal?              @map("abuse_score_snapshot") @db.Decimal(4, 3)
+  escalationReason     String?               @map("escalation_reason") @db.Text
+  resolvedAt           DateTime?             @map("resolved_at")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  messages  SupportTicketMessage[]
+  evidence  SupportTicketEvidence[]
+
+  @@index([appointmentId])
+  @@index([createdByUserId, createdAt])
+  @@index([providerProfileId, status])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id           String               @id @default(cuid())
+  ticketId     String               @map("ticket_id")
+  ticket       SupportTicket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorType   SupportMessageAuthor @map("author_type")
+  authorUserId String?              @map("author_user_id")
+  authorUser   User?                @relation("SupportTicketMessageAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+  body         String               @db.Text
+  metadata     Json?
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  @@index([ticketId, createdAt])
+  @@map("support_ticket_messages")
+}
+
+model SupportTicketEvidence {
+  id               String        @id @default(cuid())
+  ticketId         String        @map("ticket_id")
+  ticket           SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedByUserId String        @map("uploaded_by_user_id")
+  uploadedBy       User          @relation("SupportTicketEvidenceUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  fileUrl          String        @map("file_url") @db.Text
+  mimeType         String?       @map("mime_type")
+  label            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@index([ticketId])
+  @@map("support_ticket_evidence")
 }

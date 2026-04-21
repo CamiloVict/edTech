@@ -104,7 +104,171 @@ function dualShiftWeekdays(
   ];
 }
 
+/** Catálogo de categorías y reglas de resolución automática (soporte contextual a citas). */
+async function seedSupportCatalog() {
+  const categories: {
+    code: string;
+    labelEs: string;
+    descriptionEs?: string;
+    parentCode?: string | null;
+    sortOrder: number;
+  }[] = [
+    {
+      code: 'NO_SHOW',
+      labelEs: 'El educador no se presentó',
+      descriptionEs: 'La sesión estaba confirmada y el educador no asistió.',
+      sortOrder: 10,
+    },
+    {
+      code: 'LATE_START',
+      labelEs: 'La sesión empezó tarde',
+      sortOrder: 20,
+    },
+    {
+      code: 'QUALITY',
+      labelEs: 'Calidad de la enseñanza',
+      sortOrder: 30,
+    },
+    {
+      code: 'TECHNICAL',
+      labelEs: 'Problemas técnicos (audio / vídeo)',
+      sortOrder: 40,
+    },
+    {
+      code: 'BILLING',
+      labelEs: 'Facturación o cobro',
+      sortOrder: 50,
+    },
+    {
+      code: 'SHORT_SESSION',
+      labelEs: 'Sesión más corta de lo acordado',
+      sortOrder: 25,
+    },
+    {
+      code: 'OTHER',
+      labelEs: 'Otro',
+      sortOrder: 90,
+    },
+  ];
+
+  for (const c of categories) {
+    await prisma.supportComplaintCategory.upsert({
+      where: { code: c.code },
+      create: {
+        code: c.code,
+        labelEs: c.labelEs,
+        descriptionEs: c.descriptionEs ?? null,
+        parentCode: c.parentCode ?? null,
+        sortOrder: c.sortOrder,
+        active: true,
+      },
+      update: {
+        labelEs: c.labelEs,
+        descriptionEs: c.descriptionEs ?? null,
+        parentCode: c.parentCode ?? null,
+        sortOrder: c.sortOrder,
+        active: true,
+      },
+    });
+  }
+
+  const rules: {
+    categoryCode: string;
+    name: string;
+    priority: number;
+    conditionsJson: Prisma.InputJsonValue;
+    actionType: string;
+    actionPayload?: Prisma.InputJsonValue;
+    autoConfidence: number;
+  }[] = [
+    {
+      categoryCode: 'NO_SHOW',
+      name: 'No-show → crédito / reembolso recomendado',
+      priority: 100,
+      conditionsJson: {},
+      actionType: 'REFUND_OR_CREDIT_FULL',
+      actionPayload: { channel: 'billing_queue', slaHours: 72 },
+      autoConfidence: 0.9,
+    },
+    {
+      categoryCode: 'SHORT_SESSION',
+      name: 'Sesión corta → parcial si minutos reportados',
+      priority: 90,
+      conditionsJson: { maxActualMinutes: 30 },
+      actionType: 'REFUND_PARTIAL',
+      actionPayload: { percent: 50 },
+      autoConfidence: 0.62,
+    },
+    {
+      categoryCode: 'TECHNICAL',
+      name: 'Técnico → reprogramación',
+      priority: 85,
+      conditionsJson: {},
+      actionType: 'OFFER_RESCHEDULE',
+      actionPayload: { maxRescheduleOffers: 2 },
+      autoConfidence: 0.74,
+    },
+    {
+      categoryCode: 'LATE_START',
+      name: 'Tarde sin no-show → revisión humana',
+      priority: 70,
+      conditionsJson: {},
+      actionType: 'PARTIAL_CREDIT',
+      actionPayload: { percent: 15 },
+      autoConfidence: 0.48,
+    },
+    {
+      categoryCode: 'QUALITY',
+      name: 'Calidad → siempre revisión',
+      priority: 60,
+      conditionsJson: {},
+      actionType: 'ESCALATE',
+      actionPayload: { team: 'pedagogy' },
+      autoConfidence: 0.35,
+    },
+    {
+      categoryCode: 'BILLING',
+      name: 'Facturación → finanzas',
+      priority: 80,
+      conditionsJson: {},
+      actionType: 'ESCALATE',
+      actionPayload: { team: 'billing' },
+      autoConfidence: 0.32,
+    },
+    {
+      categoryCode: 'OTHER',
+      name: 'Otro → cola general',
+      priority: 10,
+      conditionsJson: {},
+      actionType: 'ESCALATE',
+      actionPayload: { team: 'general' },
+      autoConfidence: 0.28,
+    },
+  ];
+
+  await prisma.supportResolutionRule.deleteMany({});
+  for (const r of rules) {
+    await prisma.supportResolutionRule.create({
+      data: {
+        categoryCode: r.categoryCode,
+        name: r.name,
+        priority: r.priority,
+        conditionsJson: r.conditionsJson,
+        actionType: r.actionType,
+        actionPayload: r.actionPayload ?? Prisma.JsonNull,
+        autoConfidence: new Prisma.Decimal(r.autoConfidence),
+        active: true,
+      },
+    });
+  }
+}
+
 async function clearDb() {
+  await prisma.supportTicketEvidence.deleteMany();
+  await prisma.supportTicketMessage.deleteMany();
+  await prisma.supportTicket.deleteMany();
+  await prisma.supportResolutionRule.deleteMany();
+  await prisma.supportComplaintCategory.deleteMany();
   await prisma.appointment.deleteMany();
   await prisma.providerAvailabilityBlock.deleteMany();
   await prisma.providerRate.deleteMany();
@@ -647,8 +811,10 @@ async function main() {
     });
   }
 
+  await seedSupportCatalog();
+
   console.log(
-    `Seed OK: ${providers.length} educadores con tarifas + bloques de disponibilidad, 2 familias de prueba, 1 usuario sin rol.`,
+    `Seed OK: ${providers.length} educadores con tarifas + bloques de disponibilidad, 2 familias de prueba, 1 usuario sin rol, catálogo de soporte.`,
   );
 }
 
