@@ -1,9 +1,10 @@
 import './load-dev-env';
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+
 import { json, urlencoded } from 'express';
 
 import { AppModule } from './app.module';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,7 +16,7 @@ async function bootstrap() {
 
   const webOrigins =
     process.env.WEB_ORIGIN?.split(',').map((o) => o.trim()) ?? [
-      'http://localhost:3000',
+      'http://localhost:3000','https://edifyacademy.co', 'https://www.edifyacademy.co'
     ];
 
   app.enableCors({
