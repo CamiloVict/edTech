@@ -1,3 +1,5 @@
+import { PLATFORM_DEFAULT_CURRENCY } from '@repo/currency';
+
 import type { AppointmentRow } from '@/features/appointments/api/appointments-api';
 import type { ProviderProfileResponse } from '@/features/provider/api/provider-api';
 import type { ProviderRateApiRow } from '@/features/provider-rates/api/provider-rates-api';
@@ -129,7 +131,7 @@ export function educatorProfileFromProvider(
     rates.length > 0
       ? Math.min(...rates.map((r) => r.amountMinor))
       : 0;
-  const currency = rates[0]?.currency ?? 'EUR';
+  const currency = rates[0]?.currency ?? PLATFORM_DEFAULT_CURRENCY;
 
   return {
     id: p.id,

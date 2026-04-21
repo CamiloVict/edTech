@@ -36,7 +36,7 @@ export default async function ExplorarPage() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground sm:text-base mb-5">
           Abre una tarjeta para ver la ficha completa: trayectoria, calendario,
-          tarifas (con sesión) y reserva.
+          tarifas en COP (con sesión) y reserva.
         </p>
         <ConsumerExploreNearAppointments />
         <div className="mt-8">

@@ -8,6 +8,7 @@ import {
   ServiceMode,
   UserRole,
 } from '@prisma/client';
+import { PLATFORM_DEFAULT_CURRENCY } from '@repo/currency';
 
 const prisma = new PrismaClient();
 
@@ -411,14 +412,14 @@ async function main() {
         {
           label: 'Sesión 1 h (domicilio)',
           amountMinor: 4500,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.HOUR,
           sortOrder: 0,
         },
         {
           label: 'Paquete 5 sesiones',
           amountMinor: 20000,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.SESSION,
           sortOrder: 1,
         },
@@ -449,14 +450,14 @@ async function main() {
         {
           label: 'Hora de cuidado',
           amountMinor: 3800,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.HOUR,
           sortOrder: 0,
         },
         {
           label: 'Noche (22:00–08:00)',
           amountMinor: 8500,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.DAY,
           sortOrder: 1,
         },
@@ -502,14 +503,14 @@ async function main() {
         {
           label: 'Clase / juego guiado (1 h)',
           amountMinor: 3200,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.HOUR,
           sortOrder: 0,
         },
         {
           label: 'Cuidado + estimulación (2 h)',
           amountMinor: 5500,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.SESSION,
           sortOrder: 1,
         },
@@ -554,7 +555,7 @@ async function main() {
         {
           label: 'Clase online 45 min',
           amountMinor: 2800,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.SESSION,
           sortOrder: 0,
         },
@@ -588,14 +589,14 @@ async function main() {
         {
           label: 'Sesión 1 h',
           amountMinor: 3600,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.HOUR,
           sortOrder: 0,
         },
         {
           label: 'Plan mensual 8 sesiones',
           amountMinor: 24000,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.SESSION,
           sortOrder: 1,
         },
@@ -640,7 +641,7 @@ async function main() {
         {
           label: 'Taller 90 min',
           amountMinor: 4200,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.SESSION,
           sortOrder: 0,
         },
@@ -674,14 +675,14 @@ async function main() {
         {
           label: 'Observación + guía 1 h',
           amountMinor: 5500,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.HOUR,
           sortOrder: 0,
         },
         {
           label: 'Día de acompañamiento',
           amountMinor: 12000,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.DAY,
           sortOrder: 1,
         },
@@ -715,7 +716,7 @@ async function main() {
         {
           label: 'Hora de refuerzo',
           amountMinor: 2200,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.HOUR,
           sortOrder: 0,
         },
@@ -749,7 +750,7 @@ async function main() {
         {
           label: 'Bloque 4 h',
           amountMinor: 6000,
-          currency: 'EUR',
+          currency: PLATFORM_DEFAULT_CURRENCY,
           unit: RateUnit.SESSION,
           sortOrder: 0,
         },

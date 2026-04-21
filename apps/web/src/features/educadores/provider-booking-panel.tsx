@@ -25,6 +25,7 @@ import {
   isCustomAlternativeRangeValid,
   parseDatetimeLocal,
 } from '@/features/educadores/lib/custom-alternative-window';
+import { formatMoneyMinor } from '@/features/educator-hub/application/educator-format';
 import type { ProviderDetailResponse } from '@/features/providers/api/providers-api';
 import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
@@ -56,17 +57,6 @@ function unitLabel(unit: string): string {
   if (unit === 'SESSION') return 'por sesión';
   if (unit === 'DAY') return 'por día';
   return unit;
-}
-
-function formatMoney(amountMinor: number, currency: string) {
-  try {
-    return new Intl.NumberFormat('es', {
-      style: 'currency',
-      currency: currency || 'EUR',
-    }).format(amountMinor / 100);
-  } catch {
-    return `${(amountMinor / 100).toFixed(2)} ${currency}`;
-  }
 }
 
 function toDatetimeLocalValue(d: Date): string {
@@ -338,10 +328,10 @@ export function ProviderBookingPanel({
   if (!viewer.isSignedIn) {
     return (
       <div className="rounded-2xl border border-border bg-linear-to-br from-muted/80 to-card p-5 shadow-sm">
-        <h3 className="text-sm font-bold text-foreground">Tarifas y reservas</h3>
+        <h3 className="text-sm font-bold text-foreground">Tarifas (COP) y reservas</h3>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Inicia sesión para ver las tarifas de este educador, su disponibilidad
-          detallada y solicitar una clase.
+          Inicia sesión para ver las tarifas en <strong>COP</strong> de este educador, su
+          disponibilidad detallada y solicitar una clase.
         </p>
         <Link
           href="/sign-in"
@@ -373,10 +363,10 @@ export function ProviderBookingPanel({
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-        <h3 className="text-sm font-bold text-foreground">Tarifas</h3>
+        <h3 className="text-sm font-bold text-foreground">Tarifas (COP)</h3>
         {detail.rates.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
-            Este educador aún no ha publicado tarifas.
+            Este educador aún no ha publicado tarifas en COP.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -391,8 +381,9 @@ export function ProviderBookingPanel({
                     ({unitLabel(r.unit)})
                   </span>
                 </span>
-                <span className="shrink-0 font-semibold text-foreground">
-                  {formatMoney(r.amountMinor, r.currency)}
+                <span className="shrink-0 font-semibold text-foreground tabular-nums">
+                  {formatMoneyMinor(r.amountMinor, r.currency)}{' '}
+                  <span className="text-xs font-medium text-muted-foreground">COP</span>
                 </span>
               </li>
             ))}

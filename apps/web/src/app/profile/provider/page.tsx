@@ -6,10 +6,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { PLATFORM_DEFAULT_CURRENCY } from '@repo/currency';
+
 import {
   bootstrapQueryKey,
   fetchBootstrap,
 } from '@/features/bootstrap/api/bootstrap-api';
+import { formatMoneyMinor } from '@/features/educator-hub/application/educator-format';
 import {
   createRate,
   deleteRate,
@@ -22,6 +25,7 @@ import {
 import type { RateUnit } from '@/features/providers/api/providers-api';
 import type { ProviderKind, ServiceMode } from '@/shared/types/bootstrap';
 import { AppHeader } from '@/shared/components/app-header';
+import { parseMoneyInputToMajorUnits } from '@/shared/lib/parse-money-input';
 import { Button } from '@/shared/components/ui/button';
 import { ProfilePhotoInput } from '@/shared/components/profile-photo-input';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
@@ -73,7 +77,6 @@ export default function ProviderProfilePage() {
   const [rateLabel, setRateLabel] = useState('');
   const [rateAmount, setRateAmount] = useState('');
   const [rateUnit, setRateUnit] = useState<RateUnit>('HOUR');
-  const [rateCurrency, setRateCurrency] = useState('EUR');
 
   useEffect(() => {
     const p = profileQuery.data;
@@ -157,15 +160,17 @@ export default function ProviderProfilePage() {
 
   const addRate = useMutation({
     mutationFn: async () => {
-      const n = Number(rateAmount.replace(',', '.'));
+      const n = parseMoneyInputToMajorUnits(rateAmount);
       if (Number.isNaN(n) || n < 0) {
-        throw new Error('Importe no válido');
+        throw new Error(
+          'Importe en COP no válido. Ejemplos: 45000, 45.000 o 80.000,50 (coma solo para centavos).',
+        );
       }
       const amountMinor = Math.round(n * 100);
       return createRate(getToken, {
         label: rateLabel.trim() || undefined,
         amountMinor,
-        currency: rateCurrency.trim().toUpperCase() || 'EUR',
+        currency: PLATFORM_DEFAULT_CURRENCY,
         unit: rateUnit,
       });
     },
@@ -340,10 +345,10 @@ export default function ProviderProfilePage() {
 
         <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-6">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">Tarifas</h2>
+            <h2 className="text-lg font-semibold text-stone-900">Tarifas (COP)</h2>
             <p className="mt-1 text-sm text-stone-600">
-              Solo usuarios con sesión ven estos importes al abrir tu ficha
-              desde el listado.
+              Solo usuarios con sesión ven estos importes en <strong>COP</strong> al abrir tu
+              ficha desde el listado.
             </p>
           </div>
           {ratesQuery.isLoading ? (
@@ -362,7 +367,10 @@ export default function ProviderProfilePage() {
                 >
                   <span>
                     {r.label?.trim() || 'Servicio'} · {r.unit} ·{' '}
-                    {(r.amountMinor / 100).toFixed(2)} {r.currency}
+                    <span className="tabular-nums">
+                      {formatMoneyMinor(r.amountMinor, r.currency)}{' '}
+                      <span className="text-stone-500">COP</span>
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -383,11 +391,20 @@ export default function ProviderProfilePage() {
               placeholder="Ej. Clase individual 1h"
             />
           </Field>
-          <Field label="Importe (ej. 25 o 25,50)">
+          <Field
+            label="Importe (COP)"
+            hint={
+              <>
+                Escribe el valor en <strong>pesos</strong>. Puedes usar punto para miles (ej.{' '}
+                <strong>45.000</strong>) y coma solo para centavos (ej. <strong>80.000,50</strong>).
+              </>
+            }
+          >
             <Input
               value={rateAmount}
               onChange={(e) => setRateAmount(e.target.value)}
               inputMode="decimal"
+              placeholder="Ej. 45000 o 45.000"
             />
           </Field>
           <Field label="Unidad">
@@ -400,13 +417,9 @@ export default function ProviderProfilePage() {
               <option value="DAY">Por día</option>
             </Select>
           </Field>
-          <Field label="Moneda (ISO)">
-            <Input
-              value={rateCurrency}
-              onChange={(e) => setRateCurrency(e.target.value)}
-              maxLength={3}
-            />
-          </Field>
+          <p className="text-xs text-stone-600">
+            Todas las tarifas se guardan y muestran en <strong>COP</strong> (peso colombiano).
+          </p>
           {addRate.isError ? (
             <p className="text-sm text-red-600">
               {addRate.error instanceof Error

@@ -89,8 +89,9 @@ export function EducatorOffersPage({ offers }: { offers: EducatorOffer[] }) {
                 <p className="mt-3 line-clamp-2 text-sm text-[var(--muted-foreground)]">{o.description}</p>
               </div>
               <div className="shrink-0 text-right text-sm">
-                <p className="font-semibold text-[var(--primary)]">
-                  {formatMoneyMinor(o.priceMinor, o.currency)}
+                <p className="font-semibold tabular-nums text-[var(--primary)]">
+                  {formatMoneyMinor(o.priceMinor, o.currency)}{' '}
+                  <span className="text-xs font-medium text-[var(--muted-foreground)]">COP</span>
                 </p>
                 <p className="text-[var(--muted-foreground)]">{o.durationMinutes} min</p>
                 <p className="text-xs text-[var(--muted-foreground)]">{formatServiceMode(o.modality)}</p>

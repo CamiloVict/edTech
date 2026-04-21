@@ -67,8 +67,8 @@ export function HomeLanding() {
                     <strong className="text-foreground">Edify</strong> es
                     una plataforma pensada para familias que buscan apoyo
                     educativo y cuidado infantil con confianza: un mismo lugar
-                    para descubrir perfiles, conocer tarifas con sesión iniciada,
-                    coordinar disponibilidad y citas con educadores.
+                    para descubrir perfiles, conocer tarifas en <strong>COP</strong> con sesión
+                    iniciada, coordinar disponibilidad y citas con educadores.
                   </p>
                   <p>
                     Nacimos de la necesidad de acercar el talento docente y de
@@ -118,9 +118,9 @@ export function HomeLanding() {
                 Educadores y cuidadores
               </h2>
               <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                Pulsa una tarjeta para abrir la ficha completa. Las tarifas y la
-                reserva están en el perfil (con sesión y perfil de familia
-                completo).
+                Pulsa una tarjeta para abrir la ficha completa. Las tarifas (en{' '}
+                <strong>COP</strong>) y la reserva están en el perfil (con sesión y perfil de
+                familia completo).
               </p>
             </div>
             <Link

@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@repo/currency": "workspace:*",
     "@prisma/client": "^6.3.1",
     "prisma": "^6.3.1"
   },

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PLATFORM_DEFAULT_CURRENCY } from '@repo/currency';
 import { UserRole } from '@repo/database';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -44,7 +45,7 @@ export class ProviderRatesService {
         providerProfileId: profile.id,
         label: dto.label?.trim() || null,
         amountMinor: dto.amountMinor,
-        currency: (dto.currency ?? 'EUR').toUpperCase(),
+        currency: PLATFORM_DEFAULT_CURRENCY,
         unit: dto.unit,
         sortOrder: dto.sortOrder ?? 0,
       },
@@ -73,7 +74,7 @@ export class ProviderRatesService {
               ? null
               : dto.label.trim() || null,
         amountMinor: dto.amountMinor,
-        currency: dto.currency !== undefined ? dto.currency.toUpperCase() : undefined,
+        currency: PLATFORM_DEFAULT_CURRENCY,
         unit: dto.unit,
         sortOrder: dto.sortOrder,
       },

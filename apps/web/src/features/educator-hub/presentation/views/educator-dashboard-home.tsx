@@ -400,8 +400,8 @@ export function EducatorDashboardHome({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
-          label="Ingresos del mes (estim.)"
-          value={formatMoneyMinor(kpis.revenueMonthMinor, currency)}
+          label="Ingresos del mes (COP, estim.)"
+          value={`${formatMoneyMinor(kpis.revenueMonthMinor, currency)} COP`}
           hint="Próximamente con pagos"
         />
         <Kpi label="Sesiones esta semana" value={String(kpis.sessionsThisWeek)} />

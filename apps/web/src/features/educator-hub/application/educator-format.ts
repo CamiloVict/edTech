@@ -1,3 +1,5 @@
+import { PLATFORM_DEFAULT_CURRENCY } from '@repo/currency';
+
 import type {
   AgeBand,
   EducatorAppointmentStatus,
@@ -93,16 +95,19 @@ export function formatResourceType(t: EducatorResourceType): string {
 export function formatMoneyMinor(
   minor: number,
   currency: string,
-  locale = 'es-ES',
+  locale?: string,
 ): string {
+  const code = (currency || PLATFORM_DEFAULT_CURRENCY).toUpperCase();
+  const effectiveLocale =
+    locale ?? (code === 'COP' ? 'es-CO' : 'es-ES');
   try {
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat(effectiveLocale, {
       style: 'currency',
-      currency: currency || 'EUR',
+      currency: code,
       maximumFractionDigits: 0,
     }).format(minor / 100);
   } catch {
-    return `${(minor / 100).toFixed(0)} ${currency}`;
+    return `${(minor / 100).toFixed(0)} ${code}`;
   }
 }
 

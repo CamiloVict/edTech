@@ -159,7 +159,7 @@ model ProviderRate {
   providerProfile     ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
   label               String?
   amountMinor         Int          @map("amount_minor")
-  currency            String       @default("EUR")
+  currency            String       @default("COP")
   unit                RateUnit
   sortOrder           Int          @default(0) @map("sort_order")
   createdAt           DateTime     @default(now()) @map("created_at")

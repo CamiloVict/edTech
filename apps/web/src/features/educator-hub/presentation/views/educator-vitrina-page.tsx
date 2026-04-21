@@ -178,8 +178,9 @@ export function EducatorVitrinaPage({
             <p className="text-sm leading-relaxed text-muted-foreground">{profile.bioShort}</p>
             <div className="flex flex-wrap gap-3 text-sm">
               {rates.length > 0 ? (
-                <span className="rounded-xl bg-muted px-3 py-2 font-medium">
-                  Desde {formatMoneyMinor(profile.priceFromMinor, profile.currency)}
+                <span className="rounded-xl bg-muted px-3 py-2 font-medium tabular-nums">
+                  Desde {formatMoneyMinor(profile.priceFromMinor, profile.currency)}{' '}
+                  <span className="text-muted-foreground">COP</span>
                 </span>
               ) : (
                 <span className="rounded-xl bg-muted px-3 py-2 font-medium text-muted-foreground">
@@ -230,8 +231,8 @@ export function EducatorVitrinaPage({
               ))}
             </ul>
             <p className="text-xs text-muted-foreground">
-              Publica tarifas y ventanas en Agenda para que la vitrina coincida con lo que pueden
-              reservar las familias.
+              Publica tarifas en <strong>COP</strong> y ventanas en Agenda para que la vitrina
+              coincida con lo que pueden reservar las familias.
             </p>
           </aside>
         </div>
@@ -298,11 +299,11 @@ export function EducatorVitrinaPage({
         </div>
 
         <div className="border-t border-border p-8">
-          <h3 className="text-base font-semibold text-foreground">Tarifas</h3>
+          <h3 className="text-base font-semibold text-foreground">Tarifas (COP)</h3>
           {rates.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Aún no has publicado tarifas. Las familias las ven en la columna de reserva de tu ficha
-              pública cuando inicien sesión.
+              Aún no has publicado tarifas en COP. Las familias las ven en la columna de reserva de
+              tu ficha pública cuando inicien sesión.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
@@ -315,8 +316,9 @@ export function EducatorVitrinaPage({
                     {r.label?.trim() || 'Servicio'}{' '}
                     <span className="text-muted-foreground">({rateUnitLabel(r.unit)})</span>
                   </span>
-                  <span className="shrink-0 font-semibold text-foreground">
-                    {formatMoneyMinor(r.amountMinor, r.currency)}
+                  <span className="shrink-0 font-semibold text-foreground tabular-nums">
+                    {formatMoneyMinor(r.amountMinor, r.currency)}{' '}
+                    <span className="text-xs font-medium text-muted-foreground">COP</span>
                   </span>
                 </li>
               ))}
