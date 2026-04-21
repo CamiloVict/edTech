@@ -20,6 +20,7 @@ export type BootstrapConsumerProfile = {
   phone: string | null;
   city: string | null;
   relationshipToChild: string | null;
+  photoUrl: string | null;
   isProfileCompleted: boolean;
   children: BootstrapChild[];
 };

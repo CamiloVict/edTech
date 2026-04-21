@@ -22,6 +22,7 @@ import {
   HelpCallout,
 } from '@/shared/components/friendly-form-shell';
 import { Button } from '@/shared/components/ui/button';
+import { ProfilePhotoInput } from '@/shared/components/profile-photo-input';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
 
 const modes: { value: ServiceMode; label: string }[] = [
@@ -327,11 +328,14 @@ export default function ProviderOnboardingPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Field label="Enlace de foto (opcional)">
-                <Input
+              <Field
+                label="Foto de perfil (opcional)"
+                hint="Archivo, cámara o enlace público."
+              >
+                <ProfilePhotoInput
                   value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
-                  placeholder="https://…"
+                  onChange={setPhotoUrl}
+                  disabled={submit.isPending}
                 />
               </Field>
             </div>

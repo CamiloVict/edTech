@@ -11,6 +11,7 @@ export type ConsumerProfileResponse = {
   unitOrBuilding: string | null;
   dwellingType: 'HOUSE' | 'APARTMENT' | null;
   relationshipToChild: string | null;
+  photoUrl: string | null;
   isProfileCompleted: boolean;
   children: {
     id: string;
@@ -45,6 +46,7 @@ export function patchConsumerProfile(
     unitOrBuilding: string;
     dwellingType: 'HOUSE' | 'APARTMENT';
     relationshipToChild: string;
+    photoUrl?: string;
   }>,
 ) {
   return apiRequest<ConsumerProfileResponse>('/consumer-profiles/me', {

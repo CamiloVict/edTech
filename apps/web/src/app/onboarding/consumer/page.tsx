@@ -22,6 +22,7 @@ import {
   HelpCallout,
 } from '@/shared/components/friendly-form-shell';
 import { Button } from '@/shared/components/ui/button';
+import { ProfilePhotoInput } from '@/shared/components/profile-photo-input';
 import { Field, Input, Select } from '@/shared/components/ui/field';
 import { apiRequest } from '@/shared/lib/api';
 
@@ -67,6 +68,7 @@ export default function ConsumerOnboardingPage() {
   const [unitOrBuilding, setUnitOrBuilding] = useState('');
   const [dwellingType, setDwellingType] = useState<'HOUSE' | 'APARTMENT' | ''>('');
   const [relationship, setRelationship] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [children, setChildren] = useState<ChildRow[]>([newRow()]);
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function ConsumerOnboardingPage() {
     setUnitOrBuilding(p.unitOrBuilding ?? '');
     setDwellingType(p.dwellingType ?? '');
     setRelationship(p.relationshipToChild ?? '');
+    setPhotoUrl(p.photoUrl ?? '');
     if (p.children.length) {
       setChildren(
         p.children.map((c) => ({
@@ -130,6 +133,7 @@ export default function ConsumerOnboardingPage() {
         unitOrBuilding,
         dwellingType,
         relationshipToChild: relationship,
+        photoUrl: photoUrl.trim() || undefined,
       });
 
       for (const row of children) {
@@ -284,6 +288,18 @@ export default function ConsumerOnboardingPage() {
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
                 placeholder="Mamá, papá, abuela…"
+              />
+            </Field>
+          </div>
+          <div className="sm:col-span-2">
+            <Field
+              label="Foto (opcional)"
+              hint="Archivo, cámara o enlace público."
+            >
+              <ProfilePhotoInput
+                value={photoUrl}
+                onChange={setPhotoUrl}
+                disabled={busy}
               />
             </Field>
           </div>

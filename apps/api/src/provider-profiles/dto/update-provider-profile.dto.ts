@@ -69,7 +69,7 @@ export class UpdateProviderProfileDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(2048)
+  @MaxLength(600000)
   photoUrl?: string;
 
   @IsOptional()

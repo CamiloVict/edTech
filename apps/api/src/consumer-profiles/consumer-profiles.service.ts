@@ -52,6 +52,7 @@ export class ConsumerProfilesService {
         postalCode: dto.postalCode ?? undefined,
         unitOrBuilding: dto.unitOrBuilding ?? undefined,
         dwellingType: dto.dwellingType ?? undefined,
+        photoUrl: dto.photoUrl ?? undefined,
       },
       include: { children: true },
     });

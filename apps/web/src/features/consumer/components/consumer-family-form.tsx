@@ -16,6 +16,7 @@ import {
   patchConsumerProfile,
   postChild,
 } from '@/features/consumer/api/consumer-api';
+import { ProfilePhotoInput } from '@/shared/components/profile-photo-input';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input, Select } from '@/shared/components/ui/field';
 
@@ -64,6 +65,7 @@ export function ConsumerFamilyForm() {
   const [unitOrBuilding, setUnitOrBuilding] = useState('');
   const [dwellingType, setDwellingType] = useState<'HOUSE' | 'APARTMENT' | ''>('');
   const [relationship, setRelationship] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [children, setChildren] = useState<ChildRow[]>([newRow()]);
 
   useEffect(() => {
@@ -77,6 +79,7 @@ export function ConsumerFamilyForm() {
     setUnitOrBuilding(p.unitOrBuilding ?? '');
     setDwellingType(p.dwellingType ?? '');
     setRelationship(p.relationshipToChild ?? '');
+    setPhotoUrl(p.photoUrl ?? '');
     if (p.children.length) {
       setChildren(
         p.children.map((c) => ({
@@ -107,6 +110,7 @@ export function ConsumerFamilyForm() {
         unitOrBuilding,
         dwellingType,
         relationshipToChild: relationship,
+        photoUrl: photoUrl.trim() || undefined,
       });
 
       const existingServer = profileQuery.data?.children ?? [];
@@ -218,6 +222,16 @@ export function ConsumerFamilyForm() {
         </Field>
         <Field label="Ciudad">
           <Input value={city} onChange={(e) => setCity(e.target.value)} />
+        </Field>
+        <Field
+          label="Foto (opcional)"
+          hint="Archivo, cámara o enlace. Ayuda a que el educador te reconozca."
+        >
+          <ProfilePhotoInput
+            value={photoUrl}
+            onChange={setPhotoUrl}
+            disabled={save.isPending}
+          />
         </Field>
         <Field
           label="Dirección (calle y número)"

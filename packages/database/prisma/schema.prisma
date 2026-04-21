@@ -100,6 +100,8 @@ model ConsumerProfile {
   unitOrBuilding        String?   @map("unit_or_building")
   dwellingType          DwellingType? @map("dwelling_type")
   relationshipToChild   String?   @map("relationship_to_child")
+  /// Foto de perfil (URL o imagen en base64 comprimida desde el cliente).
+  photoUrl              String?   @map("photo_url")
   isProfileCompleted    Boolean   @default(false) @map("is_profile_completed")
   onboardingCompletedAt DateTime? @map("onboarding_completed_at")
   children              Child[]

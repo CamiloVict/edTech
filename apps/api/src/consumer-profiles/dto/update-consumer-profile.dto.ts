@@ -43,4 +43,9 @@ export class UpdateConsumerProfileDto {
   @IsOptional()
   @IsEnum(DwellingType)
   dwellingType?: DwellingType;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(600000)
+  photoUrl?: string;
 }

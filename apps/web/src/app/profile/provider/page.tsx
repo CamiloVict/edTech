@@ -23,6 +23,7 @@ import type { RateUnit } from '@/features/providers/api/providers-api';
 import type { ProviderKind, ServiceMode } from '@/shared/types/bootstrap';
 import { AppHeader } from '@/shared/components/app-header';
 import { Button } from '@/shared/components/ui/button';
+import { ProfilePhotoInput } from '@/shared/components/profile-photo-input';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
 
 const modes: { value: ServiceMode; label: string }[] = [
@@ -288,12 +289,11 @@ export default function ProviderProfilePage() {
             <option value="APARTMENT">Apartamento / edificio / consultorio</option>
           </Select>
         </Field>
-        <Field label="Foto (URL)">
-          <Input
-            value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
-            placeholder="https://…"
-          />
+        <Field
+          label="Foto de perfil"
+          hint="Sube una imagen, úsala con la cámara o pega un enlace público."
+        >
+          <ProfilePhotoInput value={photoUrl} onChange={setPhotoUrl} disabled={save.isPending} />
         </Field>
         <Field label="Disponibilidad (texto libre)">
           <TextArea

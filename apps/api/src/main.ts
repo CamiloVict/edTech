@@ -1,12 +1,17 @@
 import './load-dev-env';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   console.log('[bootstrap] NestFactory.create finished');
+
+  /** Fotos en base64 (data URL) desde el cliente; el límite por defecto de Express es demasiado bajo. */
+  app.use(json({ limit: '2mb' }));
+  app.use(urlencoded({ extended: true, limit: '2mb' }));
 
   const webOrigins =
     process.env.WEB_ORIGIN?.split(',').map((o) => o.trim()) ?? [

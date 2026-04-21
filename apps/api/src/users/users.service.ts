@@ -168,6 +168,7 @@ export class UsersService {
             phone: user.consumerProfile.phone,
             city: user.consumerProfile.city,
             relationshipToChild: user.consumerProfile.relationshipToChild,
+            photoUrl: user.consumerProfile.photoUrl,
             isProfileCompleted: user.consumerProfile.isProfileCompleted,
             children: user.consumerProfile.children.map((c) => ({
               id: c.id,
