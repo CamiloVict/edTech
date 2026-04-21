@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 
+import { FeedbackFab } from '@/features/feedback/feedback-fab';
 import { QueryProvider } from '@/shared/providers/query-provider';
 
 import './globals.css';
@@ -49,7 +50,10 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
           suppressHydrationWarning
         >
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            {children}
+            <FeedbackFab />
+          </QueryProvider>
         </body>
       </html>
     </ClerkProvider>

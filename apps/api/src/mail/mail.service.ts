@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
 const DEFAULT_SUPPORT_INBOX = 'camiloavict+edify@gmail.com';
+/** PQR y formulario flotante (sugerencias / quejas). */
+const DEFAULT_ACADEMY_CONTACT = 'contacto@edifyacademy.co';
 
 export type TicketCreatedMailPayload = {
   ticketId: string;
@@ -60,6 +62,19 @@ export class MailService {
     return process.env.SUPPORT_NOTIFY_EMAIL?.trim() ?? DEFAULT_SUPPORT_INBOX;
   }
 
+  /** Bandeja de reclamaciones formales (PQR) y contacto Edify Academy. */
+  academyContactInbox(): string {
+    return (
+      process.env.ACADEMY_CONTACT_EMAIL?.trim() ??
+      process.env.PQR_NOTIFY_EMAIL?.trim() ??
+      DEFAULT_ACADEMY_CONTACT
+    );
+  }
+
+  private staffInboxForTicket(formalComplaint: boolean): string {
+    return formalComplaint ? this.academyContactInbox() : this.supportInbox();
+  }
+
   private async sendSafe(to: string, subject: string, text: string): Promise<void> {
     if (!this.transporter) return;
     const t = to.trim().toLowerCase();
@@ -86,7 +101,7 @@ export class MailService {
       ? `\n\nDetalle enviado:\n${trimmedMsg}`
       : '';
 
-    const supportTo = this.supportInbox();
+    const staffTo = this.staffInboxForTicket(p.formalComplaint);
     const linesCommon = [
       `Ticket: ${p.ticketId}`,
       `Cita: ${p.appointmentId}`,
@@ -106,11 +121,14 @@ export class MailService {
       .filter(Boolean)
       .join('\n');
 
-    await this.sendSafe(
-      supportTo,
-      `[Edify] Nuevo ticket de soporte · ${p.categoryCode}`,
-      `Hay un nuevo ticket en Edify.\n\n${linesCommon}`,
-    );
+    const staffSubject = p.formalComplaint
+      ? `[Edify] PQR / ticket formal · ${p.categoryCode}`
+      : `[Edify] Nuevo ticket de soporte · ${p.categoryCode}`;
+    const staffIntro = p.formalComplaint
+      ? 'Hay una nueva reclamación formal (PQR) en Edify.\n\n'
+      : 'Hay un nuevo ticket en Edify.\n\n';
+
+    await this.sendSafe(staffTo, staffSubject, `${staffIntro}${linesCommon}`);
 
     const norm = (e: string) => e.trim().toLowerCase();
 
@@ -177,5 +195,34 @@ export class MailService {
       sent.add(k);
       await this.sendSafe(r.email, r.subject, r.body);
     }
+  }
+
+  /** Formulario global (sugerencias / quejas) → bandeja de la academia. */
+  async notifyPublicFeedback(p: {
+    kind: 'suggestion' | 'complaint';
+    message: string;
+    contactEmail: string | null;
+    sourcePath: string | null;
+    clerkUserIdHint: string | null;
+  }): Promise<void> {
+    const to = this.academyContactInbox();
+    const label = p.kind === 'suggestion' ? 'Sugerencia' : 'Queja';
+    const lines = [
+      `${label} desde la app web`,
+      '',
+      p.message,
+      '',
+      p.contactEmail
+        ? `Correo de contacto: ${p.contactEmail}`
+        : 'Sin correo de contacto indicado.',
+      p.clerkUserIdHint ? `Usuario (Clerk): ${p.clerkUserIdHint}` : null,
+      p.sourcePath ? `Origen: ${p.sourcePath}` : null,
+      '',
+      '— Edify (formulario flotante)',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    await this.sendSafe(to, `[Edify] ${label} · app`, lines);
   }
 }
