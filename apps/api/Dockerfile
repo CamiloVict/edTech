@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/currency/package.json packages/currency/package.json
+COPY packages/currency/index.js packages/currency/index.js
 COPY packages/currency/src packages/currency/src
 COPY packages/database/package.json packages/database/package.json
 COPY packages/database/index.js packages/database/index.js
@@ -39,6 +40,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/currency/package.json packages/currency/package.json
+COPY packages/currency/index.js packages/currency/index.js
 COPY packages/currency/src packages/currency/src
 COPY packages/database/package.json packages/database/package.json
 COPY packages/database/index.js packages/database/index.js
