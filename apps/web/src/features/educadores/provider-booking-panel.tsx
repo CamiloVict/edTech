@@ -26,7 +26,10 @@ import {
   parseDatetimeLocal,
 } from '@/features/educadores/lib/custom-alternative-window';
 import { formatMoneyMinor } from '@/features/educator-hub/application/educator-format';
-import type { ProviderDetailResponse } from '@/features/providers/api/providers-api';
+import type {
+  ProviderDetailResponse,
+  ProviderPublishedOfferRow,
+} from '@/features/providers/api/providers-api';
 import { ApiError } from '@/shared/lib/api';
 import { Button } from '@/shared/components/ui/button';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
@@ -105,6 +108,8 @@ export function ProviderBookingPanel({
   detailError,
   slotPrefillRequest,
   onSlotPrefillApplied,
+  /** Ofertas desde la ficha pública (p. ej. sin sesión o antes de cargar `/providers/:id`). */
+  publishedOffersFallback,
 }: {
   providerProfileId: string;
   viewer: ProviderBookingViewer;
@@ -113,6 +118,7 @@ export function ProviderBookingPanel({
   detailError: boolean;
   slotPrefillRequest?: SlotPrefillRequest | null;
   onSlotPrefillApplied?: () => void;
+  publishedOffersFallback?: ProviderPublishedOfferRow[];
 }) {
   const { getToken } = useAuth();
   const router = useRouter();
@@ -138,6 +144,7 @@ export function ProviderBookingPanel({
   const [attendanceChoice, setAttendanceChoice] = useState<
     '' | AppointmentAttendance
   >('');
+  const [selectedOfferId, setSelectedOfferId] = useState('');
 
   const availabilityBlocks = useMemo(
     () => detail?.availabilityBlocks ?? [],
@@ -148,6 +155,18 @@ export function ProviderBookingPanel({
     () => (detail ? isBabysitterOnlyProviderKinds(detail.kinds) : false),
     [detail],
   );
+
+  const publishedOffers = useMemo(
+    () => detail?.publishedOffers ?? publishedOffersFallback ?? [],
+    [detail?.publishedOffers, publishedOffersFallback],
+  );
+
+  useEffect(() => {
+    const list = detail?.publishedOffers ?? publishedOffersFallback ?? [];
+    setSelectedOfferId((prev) =>
+      prev && list.some((o) => o.id === prev) ? prev : '',
+    );
+  }, [detail, publishedOffersFallback]);
 
   const needsAttendanceChoice =
     Boolean(detail?.serviceMode === 'HYBRID' && !babysitterOnly);
@@ -184,6 +203,7 @@ export function ProviderBookingPanel({
     setChildId('');
     setMeetingUrl('');
     setAttendanceChoice('');
+    setSelectedOfferId('');
   }, [providerProfileId]);
 
   useEffect(() => {
@@ -283,6 +303,9 @@ export function ProviderBookingPanel({
         childId: childId.trim(),
         noteFromFamily: note.trim() || undefined,
         requestsAlternativeSchedule: alternative,
+        ...(publishedOffers.length > 0 && selectedOfferId.trim()
+          ? { providerOfferId: selectedOfferId.trim() }
+          : {}),
         ...(hybridNeedsPick &&
         (attendanceChoice === 'IN_PERSON' || attendanceChoice === 'ONLINE')
           ? { attendanceMode: attendanceChoice }
@@ -461,6 +484,27 @@ export function ProviderBookingPanel({
             <p className="mt-5 text-sm text-red-700">
               Añade al menos un hijo o hija en tu perfil para reservar.
             </p>
+          ) : null}
+
+          {publishedOffers.length > 0 ? (
+            <div className="mt-5">
+              <Field
+                label="Oferta (opcional)"
+                hint="Puedes dejarlo vacío. Si eliges una, el educador verá esa oferta en la cita y en su agenda."
+              >
+                <Select
+                  value={selectedOfferId}
+                  onChange={(e) => setSelectedOfferId(e.target.value)}
+                >
+                  <option value="">Sin vincular a una oferta concreta</option>
+                  {publishedOffers.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.title} · {o.durationMinutes} min
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
           ) : null}
 
           {detail ? (

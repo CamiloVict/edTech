@@ -1,9 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AppointmentReviewAuthor,
+  AppointmentStatus,
   OnboardingStep,
   Prisma,
   ProviderKind,
   ProviderProfile,
+  ProviderOfferStatus,
   UserRole,
 } from '@repo/database';
 
@@ -23,6 +26,33 @@ export type DiscoverProviderRow = {
   yearsOfExperience: number | null;
   focusAreas: string[];
   serviceMode: string | null;
+};
+
+export type DiscoverPublicPublishedOffer = {
+  id: string;
+  type: string;
+  title: string;
+  category: string;
+  description: string;
+  ageBands: string[];
+  modality: string;
+  durationMinutes: number;
+  priceMinor: number;
+  currency: string;
+  suggestedFrequency: string;
+  maxSeats: number | null;
+};
+
+export type DiscoverPublicConsumerReview = {
+  stars: number;
+  comment: string | null;
+  createdAt: string;
+};
+
+/** Ficha pública ampliada (ofertas + reseñas de familias en citas completadas). */
+export type DiscoverPublicProfile = DiscoverProviderRow & {
+  publishedOffers: DiscoverPublicPublishedOffer[];
+  consumerReviews: DiscoverPublicConsumerReview[];
 };
 
 @Injectable()
@@ -85,8 +115,8 @@ export class DiscoverService {
     return rows.map((p) => this.toRow(p));
   }
 
-  /** Ficha pública ampliada (sin tarifas ni bloques de calendario). */
-  async getPublicProfile(providerProfileId: string): Promise<DiscoverProviderRow> {
+  /** Ficha pública ampliada (ofertas publicadas + comentarios de familias en citas completadas). */
+  async getPublicProfile(providerProfileId: string): Promise<DiscoverPublicProfile> {
     const p = await this.prisma.providerProfile.findFirst({
       where: {
         id: providerProfileId,
@@ -101,7 +131,56 @@ export class DiscoverService {
     if (!p) {
       throw new NotFoundException('Provider not found');
     }
-    return this.toRow(p);
+
+    const [publishedOffers, reviewRows] = await Promise.all([
+      this.prisma.providerOffer.findMany({
+        where: {
+          providerProfileId: p.id,
+          status: ProviderOfferStatus.PUBLISHED,
+        },
+        orderBy: { title: 'asc' },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          category: true,
+          description: true,
+          ageBands: true,
+          modality: true,
+          durationMinutes: true,
+          priceMinor: true,
+          currency: true,
+          suggestedFrequency: true,
+          maxSeats: true,
+        },
+      }),
+      this.prisma.appointmentReview.findMany({
+        where: {
+          authorRole: AppointmentReviewAuthor.CONSUMER,
+          appointment: {
+            providerProfileId: p.id,
+            status: AppointmentStatus.COMPLETED,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        select: {
+          stars: true,
+          comment: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    return {
+      ...this.toRow(p),
+      publishedOffers,
+      consumerReviews: reviewRows.map((r) => ({
+        stars: r.stars,
+        comment: r.comment,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
   }
 
   private toRow(p: ProviderProfile): DiscoverProviderRow {

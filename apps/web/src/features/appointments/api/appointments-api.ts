@@ -36,6 +36,11 @@ export type AppointmentRow = {
   providerProfileId: string;
   consumerProfileId: string;
   childId: string | null;
+  /** Cita ligada a una oferta publicada del educador (opcional). */
+  providerOfferId?: string | null;
+  /** Copia del título al reservar. */
+  offerTitleSnapshot?: string | null;
+  providerOffer?: { id: string; title: string; type: string } | null;
   startsAt: string;
   endsAt: string;
   status: AppointmentStatus;
@@ -88,6 +93,8 @@ export function createAppointment(
     requestsAlternativeSchedule?: boolean;
     meetingUrl?: string;
     attendanceMode?: AppointmentAttendance;
+    /** Opcional: oferta publicada del educador para vincular la cita. */
+    providerOfferId?: string;
   },
 ) {
   return apiRequest<AppointmentRow>('/appointments', {

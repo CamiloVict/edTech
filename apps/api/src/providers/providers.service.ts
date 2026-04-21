@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   OnboardingStep,
+  ProviderOfferStatus,
   UserRole,
 } from '@repo/database';
 
@@ -52,6 +53,28 @@ export class ProvidersService {
       orderBy: { startsAt: 'asc' },
     });
 
+    const publishedOffers = await this.prisma.providerOffer.findMany({
+      where: {
+        providerProfileId: p.id,
+        status: ProviderOfferStatus.PUBLISHED,
+      },
+      orderBy: { title: 'asc' },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        category: true,
+        description: true,
+        ageBands: true,
+        modality: true,
+        durationMinutes: true,
+        priceMinor: true,
+        currency: true,
+        suggestedFrequency: true,
+        maxSeats: true,
+      },
+    });
+
     return {
       id: p.id,
       fullName: p.fullName,
@@ -80,6 +103,7 @@ export class ProvidersService {
         isAllDay: b.isAllDay,
         timezone: b.timezone,
       })),
+      publishedOffers,
     };
   }
 }

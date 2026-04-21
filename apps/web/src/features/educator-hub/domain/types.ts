@@ -120,7 +120,9 @@ export type OfferType =
   | 'MINI_COURSE'
   | 'AGE_PROGRAM'
   | 'LEARNING_PATH'
-  | 'EXPERIENCE';
+  | 'EXPERIENCE'
+  /** Libre: el educador define título y descripción sin encajar en otra plantilla. */
+  | 'CUSTOM';
 
 export type OfferStatus = 'DRAFT' | 'PUBLISHED' | 'PAUSED';
 

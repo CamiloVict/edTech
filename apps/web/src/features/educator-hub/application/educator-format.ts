@@ -30,6 +30,7 @@ const OFFER_TYPE: Record<OfferType, string> = {
   AGE_PROGRAM: 'Programa por edad',
   LEARNING_PATH: 'Ruta',
   EXPERIENCE: 'Experiencia',
+  CUSTOM: 'Personalizada',
 };
 
 const OFFER_STATUS: Record<OfferStatus, string> = {

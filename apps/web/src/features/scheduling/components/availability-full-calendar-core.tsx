@@ -106,20 +106,25 @@ const APPOINTMENT_EVENT_ID_PREFIX = 'fc-appt:';
 function buildAppointmentEventTitle(a: AppointmentRow): string {
   const child = a.child?.firstName?.trim() || 'Alumno';
   const fam = a.consumerProfile.fullName?.trim() || 'Familia';
+  const offer =
+    (a.offerTitleSnapshot && a.offerTitleSnapshot.trim()) ||
+    (a.providerOffer?.title && a.providerOffer.title.trim()) ||
+    '';
+  const offerBit = offer ? ` · ${offer}` : '';
   if (a.status === 'PENDING') {
     const alt = a.requestsAlternativeSchedule ? ' · horario propuesto' : '';
-    return `Solicitud · ${child}${alt}`;
+    return `Solicitud · ${child}${alt}${offerBit}`;
   }
   if (a.status === 'CONFIRMED') {
-    return `Cita confirmada · ${child} · ${fam}`;
+    return `Cita confirmada · ${child} · ${fam}${offerBit}`;
   }
   if (a.status === 'COMPLETED') {
-    return `Cita completada · ${child} · ${fam}`;
+    return `Cita completada · ${child} · ${fam}${offerBit}`;
   }
   if (a.status === 'DECLINED') {
-    return `Rechazada · ${child}`;
+    return `Rechazada · ${child}${offerBit}`;
   }
-  return `${a.status.replace(/_/g, ' ')} · ${child}`;
+  return `${a.status.replace(/_/g, ' ')} · ${child}${offerBit}`;
 }
 
 const EMPTY_APPOINTMENTS: AppointmentRow[] = [];

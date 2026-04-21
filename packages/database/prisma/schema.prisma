@@ -70,6 +70,23 @@ enum AppointmentAttendance {
   ONLINE
 }
 
+/// Tipos de oferta publicada por el educador (alineado con el hub web).
+enum ProviderOfferType {
+  ONE_TO_ONE
+  WORKSHOP
+  MINI_COURSE
+  AGE_PROGRAM
+  LEARNING_PATH
+  EXPERIENCE
+  CUSTOM
+}
+
+enum ProviderOfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+}
+
 model User {
   id              String          @id @default(cuid())
   clerkUserId     String          @unique @map("clerk_user_id")
@@ -146,6 +163,7 @@ model ProviderProfile {
 
   rates                 ProviderRate[]
   availabilityBlocks    ProviderAvailabilityBlock[]
+  offers                ProviderOffer[]
   appointments          Appointment[]
   supportTickets        SupportTicket[]
 
@@ -185,6 +203,33 @@ model ProviderAvailabilityBlock {
   @@map("provider_availability_blocks")
 }
 
+model ProviderOffer {
+  id                 String               @id @default(cuid())
+  providerProfileId  String               @map("provider_profile_id")
+  providerProfile    ProviderProfile      @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  type               ProviderOfferType
+  title              String
+  category           String               @default("")
+  description        String
+  ageBands           String[]             @default([]) @map("age_bands")
+  modality           ServiceMode
+  durationMinutes    Int                  @map("duration_minutes")
+  priceMinor         Int                  @map("price_minor")
+  currency           String               @default("COP")
+  objectives         String[]             @default([])
+  methodologyNote    String               @default("") @map("methodology_note")
+  suggestedFrequency String               @map("suggested_frequency")
+  maxSeats           Int?                 @map("max_seats")
+  status             ProviderOfferStatus
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  appointments Appointment[]
+
+  @@index([providerProfileId, status])
+  @@map("provider_offers")
+}
+
 model Appointment {
   id                  String             @id @default(cuid())
   providerProfileId   String             @map("provider_profile_id")
@@ -193,6 +238,10 @@ model Appointment {
   consumerProfile     ConsumerProfile    @relation(fields: [consumerProfileId], references: [id], onDelete: Cascade)
   childId             String?            @map("child_id")
   child               Child?             @relation(fields: [childId], references: [id], onDelete: SetNull)
+  providerOfferId     String?            @map("provider_offer_id")
+  providerOffer       ProviderOffer?     @relation(fields: [providerOfferId], references: [id], onDelete: SetNull)
+  /// Título de la oferta al momento de la reserva (si la oferta se borra, la cita sigue mostrando esto).
+  offerTitleSnapshot  String?            @map("offer_title_snapshot")
   startsAt            DateTime           @map("starts_at")
   endsAt              DateTime           @map("ends_at")
   status              AppointmentStatus
@@ -217,6 +266,7 @@ model Appointment {
 
   @@index([providerProfileId, startsAt])
   @@index([consumerProfileId, startsAt])
+  @@index([providerOfferId])
   @@index([status])
   @@map("appointments")
 }

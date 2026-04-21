@@ -7,6 +7,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useBootstrapQuery } from '@/features/bootstrap/hooks/use-bootstrap';
+import type { AgeBand, OfferType } from '@/features/educator-hub/domain/types';
+import {
+  formatAgeBands,
+  formatMoneyMinor,
+  formatOfferType,
+  formatServiceMode,
+  formatShortDateTime,
+} from '@/features/educator-hub/application/educator-format';
 import { getPublicEducatorProfile } from '@/features/discover/discover-public-api';
 import { EducatorAvailabilityCalendar } from '@/features/educadores/educator-availability-calendar';
 import {
@@ -31,6 +39,22 @@ const modeLabel: Record<string, string> = {
 
 const cardClass =
   'rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8';
+
+const AGE_BAND_VALUES: readonly AgeBand[] = ['0_3', '4_7', '8_12', '13_18'];
+
+function toAgeBands(bands: string[]): AgeBand[] {
+  return bands.filter((b): b is AgeBand => (AGE_BAND_VALUES as readonly string[]).includes(b));
+}
+
+function StarSummary({ stars }: { stars: number }) {
+  const s = Math.min(5, Math.max(0, Math.round(stars)));
+  return (
+    <span className="text-amber-600" aria-hidden>
+      {'★'.repeat(s)}
+      <span className="text-muted-foreground/35">{'☆'.repeat(5 - s)}</span>
+    </span>
+  );
+}
 
 function useBookingViewer() {
   const { userId, isLoaded } = useAuth();
@@ -284,40 +308,124 @@ export function EducatorProfilePage({
               ) : null}
             </section>
 
-            <section className={cardClass}>
-              <h2 className="text-lg font-bold text-foreground">Opiniones</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Valoración mostrada en la plataforma (próximamente reseñas
-                verificadas con comentario).
-              </p>
-              <div className="mt-6 flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-foreground">
-                  {rating}
-                </span>
-                <span className="text-sm text-muted-foreground">/ 5</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {pub.ratingCount > 0
-                  ? `Basado en ${pub.ratingCount} valoración${pub.ratingCount === 1 ? '' : 'es'} registradas.`
-                  : 'Aún no hay valoraciones registradas.'}
-              </p>
-              <div className="mt-8 rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Los comentarios de familias aparecerán aquí cuando activemos
-                  reseñas con texto.
+            {(pub.publishedOffers ?? []).length > 0 ? (
+              <section className={cardClass}>
+                <h2 className="text-lg font-bold text-foreground">Ofertas publicadas</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Servicios que este educador ofrece hoy. Al reservar puedes vincular la cita a una
+                  oferta si lo deseas.
                 </p>
-              </div>
-            </section>
+                <ul className="mt-6 space-y-5">
+                  {(pub.publishedOffers ?? []).map((o) => {
+                    const ages = toAgeBands(o.ageBands);
+                    return (
+                      <li
+                        key={o.id}
+                        className="rounded-xl border border-border bg-muted/25 px-4 py-4 sm:px-5"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                            {formatOfferType(o.type as OfferType)}
+                          </span>
+                          {o.category ? (
+                            <span className="text-xs text-muted-foreground">{o.category}</span>
+                          ) : null}
+                        </div>
+                        <h3 className="mt-2 text-base font-semibold text-foreground">{o.title}</h3>
+                        <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-muted-foreground">
+                          {o.description}
+                        </p>
+                        <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <div>
+                            <dt className="inline font-medium text-foreground">Modalidad: </dt>
+                            <dd className="inline">{formatServiceMode(o.modality)}</dd>
+                          </div>
+                          <div>
+                            <dt className="inline font-medium text-foreground">Duración: </dt>
+                            <dd className="inline">{o.durationMinutes} min</dd>
+                          </div>
+                          <div>
+                            <dt className="inline font-medium text-foreground">Precio: </dt>
+                            <dd className="inline font-semibold text-foreground">
+                              {o.priceMinor > 0
+                                ? `${formatMoneyMinor(o.priceMinor, o.currency)} COP`
+                                : 'Consultar'}
+                            </dd>
+                          </div>
+                          <div className="w-full sm:w-auto">
+                            <dt className="inline font-medium text-foreground">Edades: </dt>
+                            <dd className="inline">
+                              {ages.length ? formatAgeBands(ages) : 'No indicadas'}
+                            </dd>
+                          </div>
+                          <div className="w-full">
+                            <dt className="inline font-medium text-foreground">Frecuencia sugerida: </dt>
+                            <dd className="inline">{o.suggestedFrequency}</dd>
+                          </div>
+                          {o.maxSeats != null ? (
+                            <div>
+                              <dt className="inline font-medium text-foreground">Cupos: </dt>
+                              <dd className="inline">hasta {o.maxSeats}</dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
 
             <section className={cardClass}>
-              <h2 className="text-lg font-bold text-foreground">
-                Comentarios de familias
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Pronto podrás leer experiencias de otras familias que han
-                trabajado con este educador. Priorizamos comentarios asociados a
-                citas o servicios completados.
+              <h2 className="text-lg font-bold text-foreground">Opiniones y valoraciones</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Comentarios de familias tras sesiones completadas en TrofoSchool.
               </p>
+              <div className="mt-6 flex flex-wrap items-baseline gap-2">
+                <span className="text-4xl font-bold text-foreground">{rating}</span>
+                <span className="text-sm text-muted-foreground">/ 5</span>
+                <span className="text-sm text-muted-foreground">
+                  {pub.ratingCount > 0
+                    ? ` · ${pub.ratingCount} valoración${pub.ratingCount === 1 ? '' : 'es'} en perfil`
+                    : ''}
+                </span>
+              </div>
+              {(pub.consumerReviews ?? []).length === 0 ? (
+                <div className="mt-8 rounded-xl border border-dashed border-border bg-muted/50 px-4 py-8 text-center">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Aún no hay comentarios publicados con este perfil. Cuando las familias dejen
+                    valoración tras una cita completada, aparecerán aquí.
+                  </p>
+                </div>
+              ) : (
+                <ul className="mt-8 space-y-5">
+                  {(pub.consumerReviews ?? []).map((r, idx) => (
+                    <li
+                      key={`${r.createdAt}-${idx}`}
+                      className="rounded-xl border border-border bg-muted/20 px-4 py-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <StarSummary stars={r.stars} />
+                          <span className="font-semibold text-foreground">{r.stars}/5</span>
+                        </div>
+                        <time className="text-xs text-muted-foreground" dateTime={r.createdAt}>
+                          {formatShortDateTime(r.createdAt)}
+                        </time>
+                      </div>
+                      {r.comment?.trim() ? (
+                        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                          {r.comment.trim()}
+                        </p>
+                      ) : (
+                        <p className="mt-3 text-sm italic text-muted-foreground">
+                          Valoración sin comentario de texto.
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </div>
 
@@ -335,6 +443,7 @@ export function EducatorProfilePage({
                 detailError={detailQuery.isError}
                 slotPrefillRequest={slotPrefill}
                 onSlotPrefillApplied={clearSlotPrefill}
+                publishedOffersFallback={pub.publishedOffers ?? []}
               />
             </div>
           </aside>

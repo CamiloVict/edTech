@@ -35,4 +35,10 @@ export class CreateAppointmentDto {
   @IsOptional()
   @IsEnum(AppointmentAttendance)
   attendanceMode?: AppointmentAttendance;
+
+  /** Opcional: si se envía, debe ser una oferta publicada de este educador. */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  providerOfferId?: string;
 }

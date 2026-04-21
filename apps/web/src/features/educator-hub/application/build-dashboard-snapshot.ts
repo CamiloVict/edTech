@@ -235,6 +235,28 @@ export function buildProfileCompletionFromProvider(
   return { scorePercent, items };
 }
 
+function buildTopOffersFromAppointments(
+  appointments: AppointmentRow[],
+): { offerId: string; title: string; bookings: number }[] {
+  const map = new Map<string, { title: string; bookings: number }>();
+  for (const a of appointments) {
+    const oid = a.providerOfferId;
+    if (!oid) continue;
+    if (a.status !== 'CONFIRMED' && a.status !== 'COMPLETED') continue;
+    const title =
+      (a.offerTitleSnapshot && a.offerTitleSnapshot.trim()) ||
+      (a.providerOffer?.title && a.providerOffer.title.trim()) ||
+      'Oferta';
+    const cur = map.get(oid);
+    if (cur) cur.bookings += 1;
+    else map.set(oid, { title, bookings: 1 });
+  }
+  return [...map.entries()]
+    .map(([offerId, v]) => ({ offerId, title: v.title, bookings: v.bookings }))
+    .sort((x, y) => y.bookings - x.bookings)
+    .slice(0, 5);
+}
+
 function appointmentToSession(a: AppointmentRow): EducatorSession {
   const family = a.consumerProfile.fullName?.trim() || 'Familia';
   const child = a.child?.firstName ?? '—';
@@ -249,9 +271,14 @@ function appointmentToSession(a: AppointmentRow): EducatorSession {
     familyName: family,
     childName: child,
     modality,
-    offerTitle: a.requestsAlternativeSchedule
-      ? 'Cita · horario propuesto'
-      : 'Cita',
+    offerTitle: (() => {
+      const label =
+        (a.offerTitleSnapshot && a.offerTitleSnapshot.trim()) ||
+        (a.providerOffer?.title && a.providerOffer.title.trim()) ||
+        '';
+      if (label) return label;
+      return a.requestsAlternativeSchedule ? 'Cita · horario propuesto' : 'Cita';
+    })(),
     notes: a.noteFromFamily ?? undefined,
     requestsAlternativeSchedule: Boolean(a.requestsAlternativeSchedule),
   };
@@ -462,7 +489,7 @@ export function buildEducatorDashboardSnapshot(
     upcomingSessions: sessions,
     leads: [],
     activeStudents: buildActiveStudentsFromAppointments(input.appointments),
-    topOffers: [],
+    topOffers: buildTopOffersFromAppointments(input.appointments),
     recentReviews: educatorReviewsFromAppointments(input.appointments),
     reviewsLeftForFamilies: educatorReviewsOfFamiliesFromAppointments(
       input.appointments,

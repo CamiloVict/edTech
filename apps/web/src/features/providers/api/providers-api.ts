@@ -20,6 +20,22 @@ export type ProviderAvailabilityBlockRow = {
   timezone: string;
 };
 
+/** Ofertas publicadas visibles al reservar (ficha del educador). */
+export type ProviderPublishedOfferRow = {
+  id: string;
+  type: string;
+  title: string;
+  category: string;
+  description: string;
+  ageBands: string[];
+  modality: ServiceMode;
+  durationMinutes: number;
+  priceMinor: number;
+  currency: string;
+  suggestedFrequency: string;
+  maxSeats: number | null;
+};
+
 export type ProviderDetailResponse = {
   id: string;
   fullName: string | null;
@@ -35,6 +51,8 @@ export type ProviderDetailResponse = {
   serviceMode: ServiceMode | null;
   rates: ProviderRateRow[];
   availabilityBlocks: ProviderAvailabilityBlockRow[];
+  /** Presente desde API con ofertas; vacío si el educador no ha publicado ninguna. */
+  publishedOffers?: ProviderPublishedOfferRow[];
 };
 
 export function getProviderDetail(

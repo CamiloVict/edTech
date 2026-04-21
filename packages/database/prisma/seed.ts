@@ -4,6 +4,8 @@ import {
   Prisma,
   PrismaClient,
   ProviderKind,
+  ProviderOfferStatus,
+  ProviderOfferType,
   RateUnit,
   ServiceMode,
   UserRole,
@@ -812,10 +814,57 @@ async function main() {
     });
   }
 
+  const carlosProfile = await prisma.providerProfile.findFirst({
+    where: { user: { clerkUserId: 'seed_clerk_provider_completed' } },
+    select: { id: true },
+  });
+  if (carlosProfile) {
+    await prisma.providerOffer.createMany({
+      data: [
+        {
+          providerProfileId: carlosProfile.id,
+          type: ProviderOfferType.ONE_TO_ONE,
+          title: 'Clase individual 1 h',
+          category: 'Estimulación',
+          description:
+            'Sesión uno a uno en tu ritmo: juego guiado, rutinas y acompañamiento a familias con niños pequeños. Incluye breve seguimiento por mensaje tras la cita.',
+          ageBands: ['0_3', '4_7'],
+          modality: ServiceMode.HYBRID,
+          durationMinutes: 60,
+          priceMinor: 8000000,
+          currency: PLATFORM_DEFAULT_CURRENCY,
+          objectives: ['Rutinas tranquilas', 'Juego respetuoso'],
+          methodologyNote: '',
+          suggestedFrequency: '1 sesión / semana',
+          maxSeats: 1,
+          status: ProviderOfferStatus.PUBLISHED,
+        },
+        {
+          providerProfileId: carlosProfile.id,
+          type: ProviderOfferType.WORKSHOP,
+          title: 'Taller grupal — estimulación y juego',
+          category: 'Grupo',
+          description:
+            'Encuentro grupal para hasta 10 familias: dinámicas de estimulación, intercambio de ideas y material sugerido para casa. Ideal para comunidad o centro.',
+          ageBands: ['0_3'],
+          modality: ServiceMode.IN_PERSON,
+          durationMinutes: 90,
+          priceMinor: 3500000,
+          currency: PLATFORM_DEFAULT_CURRENCY,
+          objectives: ['Socialización guiada', 'Ideas prácticas'],
+          methodologyNote: '',
+          suggestedFrequency: '1 vez al mes',
+          maxSeats: 10,
+          status: ProviderOfferStatus.PUBLISHED,
+        },
+      ],
+    });
+  }
+
   await seedSupportCatalog();
 
   console.log(
-    `Seed OK: ${providers.length} educadores con tarifas + bloques de disponibilidad, 2 familias de prueba, 1 usuario sin rol, catálogo de soporte.`,
+    `Seed OK: ${providers.length} educadores con tarifas + bloques de disponibilidad, ofertas de ejemplo para Carlos, 2 familias de prueba, 1 usuario sin rol, catálogo de soporte.`,
   );
 }
 

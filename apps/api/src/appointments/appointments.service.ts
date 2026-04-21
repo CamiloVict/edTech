@@ -11,6 +11,7 @@ import {
   InPersonVenueHost,
   Prisma,
   ProviderKind,
+  ProviderOfferStatus,
   ServiceMode,
   UserRole,
 } from '@repo/database';
@@ -108,6 +109,9 @@ export class AppointmentsService {
       },
       child: {
         select: { id: true, firstName: true },
+      },
+      providerOffer: {
+        select: { id: true, title: true, type: true },
       },
       reviews: {
         select: {
@@ -270,6 +274,27 @@ export class AppointmentsService {
         ? meetingTrim
         : null;
 
+    const offerIdTrim = dto.providerOfferId?.trim() ?? '';
+    let providerOfferId: string | null = null;
+    let offerTitleSnapshot: string | null = null;
+    if (offerIdTrim) {
+      const offer = await this.prisma.providerOffer.findFirst({
+        where: {
+          id: offerIdTrim,
+          providerProfileId: dto.providerProfileId,
+          status: ProviderOfferStatus.PUBLISHED,
+        },
+        select: { id: true, title: true },
+      });
+      if (!offer) {
+        throw new BadRequestException(
+          'La oferta indicada no es válida o no está publicada para este educador.',
+        );
+      }
+      providerOfferId = offer.id;
+      offerTitleSnapshot = offer.title.trim() || null;
+    }
+
     return this.prisma.appointment.create({
       data: {
         providerProfileId: dto.providerProfileId,
@@ -283,6 +308,8 @@ export class AppointmentsService {
         meetingUrl,
         attendanceMode: attendance,
         inPersonVenueHost: InPersonVenueHost.CONSUMER,
+        providerOfferId,
+        offerTitleSnapshot,
       },
       include: this.appointmentInclude(),
     });

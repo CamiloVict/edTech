@@ -208,6 +208,18 @@ export function AppointmentDetailModal({
             </span>
           </div>
 
+          {appointment.offerTitleSnapshot?.trim() || appointment.providerOffer?.title?.trim() ? (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Oferta
+              </p>
+              <p className="mt-1 text-foreground">
+                {(appointment.offerTitleSnapshot && appointment.offerTitleSnapshot.trim()) ||
+                  appointment.providerOffer?.title}
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Horario

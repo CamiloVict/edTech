@@ -9,6 +9,11 @@ import {
 } from '@nestjs/common';
 
 import { CurrentClerkUser } from '../auth/current-clerk-user.decorator';
+import {
+  CreateProviderOfferDto,
+  PatchProviderOfferDto,
+} from '../provider-offers/dto/create-provider-offer.dto';
+import { ProviderOffersService } from '../provider-offers/provider-offers.service';
 import { CreateProviderRateDto } from '../provider-rates/dto/create-provider-rate.dto';
 import { UpdateProviderRateDto } from '../provider-rates/dto/update-provider-rate.dto';
 import { ProviderRatesService } from '../provider-rates/provider-rates.service';
@@ -20,6 +25,7 @@ export class ProviderProfilesController {
   constructor(
     private readonly service: ProviderProfilesService,
     private readonly rates: ProviderRatesService,
+    private readonly offers: ProviderOffersService,
   ) {}
 
   @Get('me/rates')
@@ -50,6 +56,28 @@ export class ProviderProfilesController {
     @Param('rateId') rateId: string,
   ) {
     return this.rates.deleteMine(clerk.clerkUserId, rateId);
+  }
+
+  @Get('me/offers')
+  listOffers(@CurrentClerkUser() clerk: { clerkUserId: string }) {
+    return this.offers.listMine(clerk.clerkUserId);
+  }
+
+  @Post('me/offers')
+  createOffer(
+    @CurrentClerkUser() clerk: { clerkUserId: string },
+    @Body() dto: CreateProviderOfferDto,
+  ) {
+    return this.offers.createMine(clerk.clerkUserId, dto);
+  }
+
+  @Patch('me/offers/:offerId')
+  updateOffer(
+    @CurrentClerkUser() clerk: { clerkUserId: string },
+    @Param('offerId') offerId: string,
+    @Body() dto: PatchProviderOfferDto,
+  ) {
+    return this.offers.updateMine(clerk.clerkUserId, offerId, dto);
   }
 
   @Get('me')

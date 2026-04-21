@@ -24,9 +24,14 @@ function toEvents(appointments: AppointmentRow[]): EventInput[] {
   return scheduledLessons(appointments).map((a) => {
     const child = a.child?.firstName ?? '—';
     const edu = a.providerProfile.fullName?.trim() || 'Educador';
+    const offer =
+      (a.offerTitleSnapshot && a.offerTitleSnapshot.trim()) ||
+      (a.providerOffer?.title && a.providerOffer.title.trim()) ||
+      '';
+    const offerBit = offer ? ` · ${offer}` : '';
     return {
       id: a.id,
-      title: `${child} · ${edu}`,
+      title: `${child} · ${edu}${offerBit}`,
       start: a.startsAt,
       end: a.endsAt,
       classNames: apptCalendarEventClasses(a.status),

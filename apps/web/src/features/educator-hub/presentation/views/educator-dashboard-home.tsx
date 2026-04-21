@@ -571,7 +571,8 @@ export function EducatorDashboardHome({
           <ul className="mt-4 space-y-2">
             {topOffers.length === 0 ? (
               <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
-                Las ofertas publicadas aparecerán aquí cuando exista el módulo conectado a datos reales.
+                Crea y publica ofertas en «Ofertas»; cuando conectemos métricas al API, verás aquí las que mejor
+                convierten.
               </li>
             ) : null}
             {topOffers.map((o) => (
