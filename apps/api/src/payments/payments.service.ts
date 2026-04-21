@@ -46,16 +46,35 @@ export class PaymentsService {
     return user.providerProfile;
   }
 
-  private async ensureStripeCustomer(consumerProfileId: string) {
+  private async ensureStripeCustomer(clerkUserId: string, consumerProfileId: string) {
     const existing = await this.prisma.stripeCustomer.findUnique({
       where: { consumerProfileId },
     });
     if (existing) {
       return existing;
     }
+    const user = await this.users.findByClerkOrThrow(clerkUserId);
+    const profile = await this.prisma.consumerProfile.findUnique({
+      where: { id: consumerProfileId },
+      select: { fullName: true },
+    });
+    const email = user.email?.trim();
+    if (!email) {
+      throw new BadRequestException('Tu cuenta no tiene email para crear el cliente de pagos');
+    }
+    const nameFromProfile = profile?.fullName?.trim();
+    const displayName =
+      nameFromProfile && nameFromProfile.length > 0 ? nameFromProfile : undefined;
+
     const stripe = this.stripeService.getClient();
     const customer = await stripe.customers.create({
-      metadata: { consumerProfileId },
+      email,
+      ...(displayName ? { name: displayName } : {}),
+      metadata: {
+        consumerProfileId,
+        trofoUserId: user.id,
+        clerkUserId: user.clerkUserId,
+      },
     });
     return this.prisma.stripeCustomer.create({
       data: {
@@ -67,7 +86,7 @@ export class PaymentsService {
 
   async createSetupIntent(clerkUserId: string) {
     const consumer = await this.requireConsumer(clerkUserId);
-    const stripeCustomer = await this.ensureStripeCustomer(consumer.id);
+    const stripeCustomer = await this.ensureStripeCustomer(clerkUserId, consumer.id);
     const stripe = this.stripeService.getClient();
     const setupIntent = await stripe.setupIntents.create({
       customer: stripeCustomer.stripeCustomerId,
@@ -93,7 +112,7 @@ export class PaymentsService {
 
   async syncPaymentMethod(clerkUserId: string, paymentMethodId: string) {
     const consumer = await this.requireConsumer(clerkUserId);
-    const stripeCustomer = await this.ensureStripeCustomer(consumer.id);
+    const stripeCustomer = await this.ensureStripeCustomer(clerkUserId, consumer.id);
     const stripe = this.stripeService.getClient();
     const method = await stripe.paymentMethods.retrieve(paymentMethodId);
     if (method.type !== 'card' || !method.card) {
@@ -153,7 +172,7 @@ export class PaymentsService {
     if (!method) {
       throw new NotFoundException('Payment method not found');
     }
-    const stripeCustomer = await this.ensureStripeCustomer(consumer.id);
+    const stripeCustomer = await this.ensureStripeCustomer(clerkUserId, consumer.id);
     const stripe = this.stripeService.getClient();
     await stripe.customers.update(stripeCustomer.stripeCustomerId, {
       invoice_settings: { default_payment_method: method.stripePaymentMethodId },
@@ -183,7 +202,7 @@ export class PaymentsService {
       throw new NotFoundException('Payment method not found');
     }
 
-    const stripeCustomer = await this.ensureStripeCustomer(consumer.id);
+    const stripeCustomer = await this.ensureStripeCustomer(clerkUserId, consumer.id);
     const stripe = this.stripeService.getClient();
 
     // Desvincula el payment method de Stripe customer para evitar cargos futuros accidentales.
