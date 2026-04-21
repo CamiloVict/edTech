@@ -4,6 +4,8 @@ import type { ProviderRateApiRow } from '@/features/provider-rates/api/provider-
 import type {
   EducatorDashboardSnapshot,
   EducatorProfile,
+  EducatorReview,
+  EducatorReviewOfFamily,
   EducatorSession,
   EducatorStudent,
   FamilyRelationship,
@@ -24,6 +26,92 @@ const TERMINAL = new Set<AppointmentRow['status']>([
   'CANCELLED_BY_FAMILY',
   'CANCELLED_BY_PROVIDER',
 ]);
+
+/** Reseñas de familias (rol CONSUMER) a partir de citas ya cargadas para el panel o la vitrina. */
+export function educatorReviewsFromAppointments(
+  appointments: AppointmentRow[],
+): EducatorReview[] {
+  const pairs: { appt: AppointmentRow; stars: number; comment: string | null }[] = [];
+  for (const appt of appointments) {
+    if (appt.status !== 'COMPLETED') continue;
+    const rev = appt.reviews?.find((r) => r.authorRole === 'CONSUMER');
+    if (!rev) continue;
+    pairs.push({ appt, stars: rev.stars, comment: rev.comment });
+  }
+  pairs.sort(
+    (a, b) =>
+      new Date(b.appt.endsAt).getTime() - new Date(a.appt.endsAt).getTime(),
+  );
+  return pairs.slice(0, 20).map(({ appt, stars, comment }) => {
+    const nameRaw = appt.consumerProfile.fullName?.trim();
+    const authorName = nameRaw ? nameRaw.split(/\s+/)[0]! : 'Familia';
+    const excerpt =
+      comment?.trim() ||
+      `Valoración de ${stars} estrella${stars === 1 ? '' : 's'}.`;
+    let date: string;
+    try {
+      date = new Date(appt.endsAt).toLocaleDateString('es', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      date = appt.endsAt;
+    }
+    const childName = appt.child?.firstName?.trim();
+    return {
+      id: `${appt.id}-consumer`,
+      authorName,
+      rating: stars,
+      excerpt,
+      date,
+      offerTitle: childName ? `Sesión (${childName})` : undefined,
+    };
+  });
+}
+
+/** Valoraciones del educador hacia familias (rol PROVIDER), para el panel del educador. */
+export function educatorReviewsOfFamiliesFromAppointments(
+  appointments: AppointmentRow[],
+): EducatorReviewOfFamily[] {
+  const pairs: { appt: AppointmentRow; stars: number; comment: string | null }[] = [];
+  for (const appt of appointments) {
+    if (appt.status !== 'COMPLETED') continue;
+    const rev = appt.reviews?.find((r) => r.authorRole === 'PROVIDER');
+    if (!rev) continue;
+    pairs.push({ appt, stars: rev.stars, comment: rev.comment });
+  }
+  pairs.sort(
+    (a, b) =>
+      new Date(b.appt.endsAt).getTime() - new Date(a.appt.endsAt).getTime(),
+  );
+  return pairs.slice(0, 20).map(({ appt, stars, comment }) => {
+    const full = appt.consumerProfile.fullName?.trim();
+    const familyDisplayName = full || 'Familia';
+    const excerpt =
+      comment?.trim() ||
+      `Valoración de ${stars} estrella${stars === 1 ? '' : 's'}.`;
+    let date: string;
+    try {
+      date = new Date(appt.endsAt).toLocaleDateString('es', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      date = appt.endsAt;
+    }
+    const childName = appt.child?.firstName?.trim();
+    return {
+      id: `${appt.id}-provider`,
+      familyDisplayName,
+      rating: stars,
+      excerpt,
+      date,
+      sessionHint: childName ? `Sesión (${childName})` : undefined,
+    };
+  });
+}
 
 function defaultServiceMode(m: ServiceMode | null): ServiceMode {
   return m ?? 'HYBRID';
@@ -373,7 +461,10 @@ export function buildEducatorDashboardSnapshot(
     leads: [],
     activeStudents: buildActiveStudentsFromAppointments(input.appointments),
     topOffers: [],
-    recentReviews: [],
+    recentReviews: educatorReviewsFromAppointments(input.appointments),
+    reviewsLeftForFamilies: educatorReviewsOfFamiliesFromAppointments(
+      input.appointments,
+    ),
     insights: [],
     badges: [],
     profileCompletion,

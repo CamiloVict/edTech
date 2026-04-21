@@ -303,6 +303,7 @@ function DashboardUpcomingSessions({
         onClose={() => setReviewModalApptId(null)}
         onUpdated={() => {
           qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+          qc.invalidateQueries({ queryKey: ['provider-profile'] });
         }}
       />
     </>
@@ -348,8 +349,18 @@ export function EducatorDashboardHome({
   publicProfileId: string | null;
   appointmentRows: AppointmentRow[];
 }) {
-  const { profile, kpis, upcomingSessions, leads, activeStudents, topOffers, recentReviews, insights, profileCompletion } =
-    snapshot;
+  const {
+    profile,
+    kpis,
+    upcomingSessions,
+    leads,
+    activeStudents,
+    topOffers,
+    recentReviews,
+    reviewsLeftForFamilies,
+    insights,
+    profileCompletion,
+  } = snapshot;
   const currency = profile.currency;
 
   const pendingRecommendations = profileCompletion.items.filter((i) => !i.done);
@@ -585,11 +596,14 @@ export function EducatorDashboardHome({
         </Surface>
 
         <Surface>
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Reseñas recientes</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Lo que dicen las familias</h2>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Valoraciones que las familias dejan sobre ti tras citas completadas.
+          </p>
           <ul className="mt-4 space-y-3">
             {recentReviews.length === 0 ? (
               <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
-                Las reseñas de familias se mostrarán aquí cuando el módulo de valoraciones esté activo.
+                Cuando las familias valoren sesiones completadas, aparecerán aquí.
               </li>
             ) : null}
             {recentReviews.map((r) => (
@@ -607,6 +621,33 @@ export function EducatorDashboardHome({
           </ul>
         </Surface>
       </div>
+
+      <Surface>
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">Tus valoraciones a familias</h2>
+        <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+          Lo que registraste sobre cada familia al cerrar la sesión (solo tú lo ves en tu panel).
+        </p>
+        <ul className="mt-4 space-y-3">
+          {reviewsLeftForFamilies.length === 0 ? (
+            <li className="rounded-xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+              Cuando completes una cita y envíes tu valoración a la familia, aparecerá aquí.
+            </li>
+          ) : null}
+          {reviewsLeftForFamilies.map((r) => (
+            <li key={r.id} className="rounded-xl border border-[var(--border)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium text-[var(--foreground)]">{r.familyDisplayName}</p>
+                <span className="text-sm text-amber-700">{r.rating} ★</span>
+              </div>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">{r.excerpt}</p>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted-foreground)]">
+                {r.sessionHint ? <span>{r.sessionHint}</span> : null}
+                <span>{r.date}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Surface>
 
       <Surface>
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Impulsa tu negocio esta semana</h2>

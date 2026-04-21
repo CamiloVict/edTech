@@ -13,7 +13,9 @@ import {
 import {
   buildProfileCompletionFromProvider,
   educatorProfileFromProvider,
+  educatorReviewsFromAppointments,
 } from '@/features/educator-hub/application/build-dashboard-snapshot';
+import { listProviderAppointments } from '@/features/appointments/api/appointments-api';
 import { EducatorVitrinaPage } from '@/features/educator-hub/presentation/views/educator-vitrina-page';
 import { getProviderProfile } from '@/features/provider/api/provider-api';
 import { listMyRates } from '@/features/provider-rates/api/provider-rates-api';
@@ -47,6 +49,12 @@ export default function ProviderVitrinaRoute() {
     enabled: isProvider,
   });
 
+  const appointmentsQuery = useQuery({
+    queryKey: ['appointments', 'provider', 'me'],
+    queryFn: () => listProviderAppointments(getToken),
+    enabled: isProvider,
+  });
+
   const vitrinaProfile = useMemo(() => {
     const api = profileQuery.data;
     if (!api) return null;
@@ -65,11 +73,17 @@ export default function ProviderVitrinaRoute() {
     return buildProfileCompletionFromProvider(api);
   }, [profileQuery.data]);
 
+  const vitrinaReviews = useMemo(
+    () => educatorReviewsFromAppointments(appointmentsQuery.data ?? []),
+    [appointmentsQuery.data],
+  );
+
   if (
     bootstrapQuery.isLoading ||
     profileQuery.isLoading ||
     ratesQuery.isLoading ||
-    blocksQuery.isLoading
+    blocksQuery.isLoading ||
+    appointmentsQuery.isLoading
   ) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
@@ -94,7 +108,7 @@ export default function ProviderVitrinaRoute() {
   return (
     <EducatorVitrinaPage
       profile={vitrinaProfile}
-      reviews={[]}
+      reviews={vitrinaReviews}
       badges={[]}
       completion={completion}
       publicProfileId={p.id}

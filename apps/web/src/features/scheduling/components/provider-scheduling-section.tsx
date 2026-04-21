@@ -585,6 +585,7 @@ export function ProviderSchedulingSection() {
         onClose={() => setReviewModalApptId(null)}
         onUpdated={() => {
           qc.invalidateQueries({ queryKey: ['appointments', 'provider', 'me'] });
+          qc.invalidateQueries({ queryKey: ['provider-profile'] });
         }}
       />
     </div>

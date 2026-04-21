@@ -177,6 +177,16 @@ export type EducatorReview = {
   offerTitle?: string;
 };
 
+/** Valoración que el educador dejó a una familia tras una cita completada (solo vista educador). */
+export type EducatorReviewOfFamily = {
+  id: string;
+  familyDisplayName: string;
+  rating: number;
+  excerpt: string;
+  date: string;
+  sessionHint?: string;
+};
+
 export type RoadmapBlockStatus = 'SUGGESTED' | 'ACTIVE' | 'DONE' | 'ADJUSTED';
 
 export type StudentRoadmapBlock = {
@@ -240,6 +250,8 @@ export type EducatorDashboardSnapshot = {
   activeStudents: EducatorStudent[];
   topOffers: { offerId: string; title: string; bookings: number }[];
   recentReviews: EducatorReview[];
+  /** Valoraciones que tú escribiste sobre familias (citas completadas). */
+  reviewsLeftForFamilies: EducatorReviewOfFamily[];
   insights: EducatorInsight[];
   badges: EducatorBadge[];
   profileCompletion: {

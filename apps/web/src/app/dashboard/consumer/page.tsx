@@ -235,6 +235,8 @@ function ConsumerHubContent() {
         onClose={() => setConsumerReviewApptId(null)}
         onUpdated={() => {
           qc.invalidateQueries({ queryKey: ['appointments', 'me'] });
+          qc.invalidateQueries({ queryKey: ['discover'] });
+          qc.invalidateQueries({ queryKey: ['educador-public'] });
         }}
       />
       <AppHeader logoHref="/explorar" pageLabel="Familia" links={hubLinks} />

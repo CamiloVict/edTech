@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ProviderKind } from '@repo/database';
 
 import { Public } from '../auth/public.decorator';
+import { parseDiscoverListQuery } from './discover-list-filters';
 import { DiscoverService } from './discover.service';
 
 @Controller('discover')
@@ -11,12 +11,27 @@ export class DiscoverController {
   /** Listado público para el inicio (familias exploran sin sesión). */
   @Public()
   @Get('providers')
-  list(@Query('kind') kind?: string) {
-    const normalized =
-      kind === ProviderKind.TEACHER || kind === ProviderKind.BABYSITTER
-        ? kind
-        : undefined;
-    return this.discover.listAvailable(normalized);
+  list(
+    @Query('kind') kind?: string,
+    @Query('serviceMode') serviceMode?: string,
+    @Query('city') city?: string,
+    @Query('minYearsExperience') minYearsExperience?: string,
+    @Query('minRating') minRating?: string,
+    @Query('minReviewCount') minReviewCount?: string,
+    @Query('focus') focus?: string,
+    @Query('q') q?: string,
+  ) {
+    const filters = parseDiscoverListQuery({
+      kind,
+      serviceMode,
+      city,
+      minYearsExperience,
+      minRating,
+      minReviewCount,
+      focus,
+      q,
+    });
+    return this.discover.listAvailable(filters);
   }
 
   /** Perfil público del educador (página de ficha). */

@@ -34,6 +34,71 @@ function formatRange(isoStart: string, isoEnd: string) {
 
 export type AppointmentViewerRole = 'CONSUMER' | 'PROVIDER';
 
+function CompletedSessionReviewsSection({
+  appointment,
+  viewerRole,
+  counterpartyName,
+}: {
+  appointment: AppointmentRow;
+  viewerRole: AppointmentViewerRole;
+  counterpartyName: string;
+}) {
+  if (appointment.status !== 'COMPLETED') return null;
+  const consumerRev = appointment.reviews?.find((r) => r.authorRole === 'CONSUMER');
+  const providerRev = appointment.reviews?.find((r) => r.authorRole === 'PROVIDER');
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Valoraciones de la sesión
+      </p>
+      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+        Tras completar la cita, la familia valora al educador y el educador a la familia. Solo las
+        partes de esta cita ven estos textos.
+      </p>
+      {!consumerRev && !providerRev ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Aún no hay valoraciones enviadas para esta cita.
+        </p>
+      ) : null}
+      {consumerRev ? (
+        <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {viewerRole === 'CONSUMER'
+              ? `Tu valoración a ${counterpartyName}`
+              : 'Valoración de la familia sobre la sesión'}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-amber-800">{consumerRev.stars} de 5</p>
+          {consumerRev.comment?.trim() ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
+              {consumerRev.comment.trim()}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">Sin comentario de texto.</p>
+          )}
+        </div>
+      ) : null}
+      {providerRev ? (
+        <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {viewerRole === 'PROVIDER'
+              ? 'Tu valoración a la familia'
+              : `Valoración del educador (${counterpartyName})`}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-amber-800">{providerRev.stars} de 5</p>
+          {providerRev.comment?.trim() ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
+              {providerRev.comment.trim()}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">Sin comentario de texto.</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function AppointmentDetailModal({
   open,
   onClose,
@@ -254,6 +319,12 @@ export function AppointmentDetailModal({
               </p>
             </div>
           ) : null}
+
+          <CompletedSessionReviewsSection
+            appointment={appointment}
+            viewerRole={viewerRole}
+            counterpartyName={counterpartyName}
+          />
 
           {appointment.requestsAlternativeSchedule ? (
             <p className="text-xs font-medium text-violet-800">

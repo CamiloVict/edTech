@@ -358,8 +358,8 @@ export function EducatorVitrinaPage({
         <div className="border-t border-border p-8">
           <h3 className="text-base font-semibold text-foreground">Valoraciones</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Igual que en la ficha pública: media global (los comentarios con texto llegarán más
-            adelante).
+            Misma media y contador que en Explorar; debajo, las valoraciones recientes de familias
+            con sesión completada.
           </p>
           <div className="mt-6 flex items-baseline gap-2">
             <span className="text-4xl font-bold text-foreground">{ratingLabel}</span>
@@ -372,8 +372,7 @@ export function EducatorVitrinaPage({
           </p>
           {reviews.length === 0 ? (
             <p className="mt-6 text-sm text-muted-foreground">
-              Las reseñas con autor y texto se mostrarán aquí cuando estén disponibles en la
-              plataforma.
+              Aún no hay valoraciones de familias en citas completadas.
             </p>
           ) : (
             <ul className="mt-4 space-y-4">
