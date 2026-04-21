@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '@repo/database';
 
+import { PaymentsService } from '../payments/payments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { CreateAvailabilityBlockDto } from './dto/create-availability-block.dto';
@@ -16,6 +17,7 @@ export class AvailabilityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
+    private readonly payments: PaymentsService,
   ) {}
 
   private async requireProvider(clerkUserId: string) {
@@ -52,6 +54,7 @@ export class AvailabilityService {
 
   async createMine(clerkUserId: string, dto: CreateAvailabilityBlockDto) {
     const { profile } = await this.requireProvider(clerkUserId);
+    await this.payments.requireProviderStripeReady(clerkUserId);
     const { start, end } = this.parseRange(dto);
     return this.prisma.providerAvailabilityBlock.create({
       data: {
@@ -70,6 +73,7 @@ export class AvailabilityService {
     dto: UpdateAvailabilityBlockDto,
   ) {
     const { profile } = await this.requireProvider(clerkUserId);
+    await this.payments.requireProviderStripeReady(clerkUserId);
     const existing = await this.prisma.providerAvailabilityBlock.findFirst({
       where: { id: blockId, providerProfileId: profile.id },
     });

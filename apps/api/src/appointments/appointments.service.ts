@@ -17,6 +17,7 @@ import {
 } from '@repo/database';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from '../users/users.service';
 import {
   ALTERNATIVE_SCHEDULE_UTC_DAY_SPAN,
@@ -53,6 +54,7 @@ export class AppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
+    private readonly payments: PaymentsService,
   ) {}
 
   private async requireConsumer(clerkUserId: string) {
@@ -160,6 +162,7 @@ export class AppointmentsService {
 
   async create(clerkUserId: string, dto: CreateAppointmentDto) {
     const { profile } = await this.requireConsumer(clerkUserId);
+    await this.payments.assertConsumerCanBook(clerkUserId);
     if (!profile.isProfileCompleted) {
       throw new ForbiddenException(
         'Complete your family profile before requesting an appointment',
@@ -277,6 +280,8 @@ export class AppointmentsService {
     const offerIdTrim = dto.providerOfferId?.trim() ?? '';
     let providerOfferId: string | null = null;
     let offerTitleSnapshot: string | null = null;
+    let quotedPriceMinor: number | null = null;
+    let quotedCurrency: string | null = null;
     if (offerIdTrim) {
       const offer = await this.prisma.providerOffer.findFirst({
         where: {
@@ -284,7 +289,7 @@ export class AppointmentsService {
           providerProfileId: dto.providerProfileId,
           status: ProviderOfferStatus.PUBLISHED,
         },
-        select: { id: true, title: true },
+        select: { id: true, title: true, priceMinor: true, currency: true },
       });
       if (!offer) {
         throw new BadRequestException(
@@ -293,6 +298,8 @@ export class AppointmentsService {
       }
       providerOfferId = offer.id;
       offerTitleSnapshot = offer.title.trim() || null;
+      quotedPriceMinor = offer.priceMinor;
+      quotedCurrency = offer.currency.toUpperCase();
     }
 
     return this.prisma.appointment.create({
@@ -310,6 +317,8 @@ export class AppointmentsService {
         inPersonVenueHost: InPersonVenueHost.CONSUMER,
         providerOfferId,
         offerTitleSnapshot,
+        quotedPriceMinor,
+        quotedCurrency,
       },
       include: this.appointmentInclude(),
     });
@@ -468,6 +477,7 @@ export class AppointmentsService {
             );
           }
         }
+        await this.payments.chargeAppointmentOnProviderAccept(appointmentId);
       }
 
       return this.prisma.appointment.update({

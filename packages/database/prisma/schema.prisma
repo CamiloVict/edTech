@@ -58,6 +58,24 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum PaymentMethodType {
+  CARD
+}
+
+enum PaymentStatus {
+  REQUIRES_PAYMENT_METHOD
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
 /// Quien escribe la reseña vinculada a una cita completada.
 enum AppointmentReviewAuthor {
   CONSUMER
@@ -127,6 +145,9 @@ model ConsumerProfile {
   onboardingCompletedAt DateTime? @map("onboarding_completed_at")
   children              Child[]
   appointments          Appointment[]
+  paymentMethods        PaymentMethod[]
+  stripeCustomer        StripeCustomer?
+  payments              Payment[]
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
@@ -165,6 +186,9 @@ model ProviderProfile {
   availabilityBlocks    ProviderAvailabilityBlock[]
   offers                ProviderOffer[]
   appointments          Appointment[]
+  stripeAccount         StripeAccount?
+  payments              Payment[]
+  payouts               Payout[]
   supportTickets        SupportTicket[]
 
   @@index([isAvailable])
@@ -242,6 +266,9 @@ model Appointment {
   providerOffer       ProviderOffer?     @relation(fields: [providerOfferId], references: [id], onDelete: SetNull)
   /// Título de la oferta al momento de la reserva (si la oferta se borra, la cita sigue mostrando esto).
   offerTitleSnapshot  String?            @map("offer_title_snapshot")
+  /// Monto final acordado para cobrar en confirmación (en minor units).
+  quotedPriceMinor     Int?              @map("quoted_price_minor")
+  quotedCurrency       String?           @map("quoted_currency")
   startsAt            DateTime           @map("starts_at")
   endsAt              DateTime           @map("ends_at")
   status              AppointmentStatus
@@ -262,6 +289,7 @@ model Appointment {
   updatedAt           DateTime           @updatedAt @map("updated_at")
 
   reviews             AppointmentReview[]
+  payment             Payment?
   supportTickets      SupportTicket[]
 
   @@index([providerProfileId, startsAt])
@@ -269,6 +297,112 @@ model Appointment {
   @@index([providerOfferId])
   @@index([status])
   @@map("appointments")
+}
+
+model StripeCustomer {
+  id                String          @id @default(cuid())
+  consumerProfileId String          @unique @map("consumer_profile_id")
+  consumerProfile   ConsumerProfile @relation(fields: [consumerProfileId], references: [id], onDelete: Cascade)
+  stripeCustomerId  String          @unique @map("stripe_customer_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@map("stripe_customers")
+}
+
+model StripeAccount {
+  id                 String          @id @default(cuid())
+  providerProfileId  String          @unique @map("provider_profile_id")
+  providerProfile    ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  stripeAccountId    String          @unique @map("stripe_account_id")
+  detailsSubmitted   Boolean         @default(false) @map("details_submitted")
+  chargesEnabled     Boolean         @default(false) @map("charges_enabled")
+  payoutsEnabled     Boolean         @default(false) @map("payouts_enabled")
+  onboardingComplete Boolean         @default(false) @map("onboarding_complete")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  @@map("stripe_accounts")
+}
+
+model PaymentMethod {
+  id                    String            @id @default(cuid())
+  consumerProfileId     String            @map("consumer_profile_id")
+  consumerProfile       ConsumerProfile   @relation(fields: [consumerProfileId], references: [id], onDelete: Cascade)
+  stripePaymentMethodId String            @unique @map("stripe_payment_method_id")
+  type                  PaymentMethodType @default(CARD)
+  brand                 String?           @map("card_brand")
+  last4                 String?           @map("card_last4")
+  expMonth              Int?              @map("card_exp_month")
+  expYear               Int?              @map("card_exp_year")
+  isDefault             Boolean           @default(false) @map("is_default")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  @@index([consumerProfileId, isDefault])
+  @@map("payment_methods")
+}
+
+model Payment {
+  id                    String          @id @default(cuid())
+  appointmentId         String          @unique @map("appointment_id")
+  appointment           Appointment     @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  consumerProfileId     String          @map("consumer_profile_id")
+  consumerProfile       ConsumerProfile @relation(fields: [consumerProfileId], references: [id], onDelete: Restrict)
+  providerProfileId     String          @map("provider_profile_id")
+  providerProfile       ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Restrict)
+  amountMinor           Int             @map("amount_minor")
+  currency              String          @default("COP")
+  platformFeeBps        Int             @default(500) @map("platform_fee_bps")
+  platformFeeMinor      Int             @map("platform_fee_minor")
+  providerAmountMinor   Int             @map("provider_amount_minor")
+  status                PaymentStatus
+  stripePaymentIntentId String?         @unique @map("stripe_payment_intent_id")
+  stripeChargeId        String?         @unique @map("stripe_charge_id")
+  idempotencyKey        String          @unique @map("idempotency_key")
+  failureReason         String?         @map("failure_reason")
+  processedAt           DateTime?       @map("processed_at")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  payout Payout?
+
+  @@index([providerProfileId, status])
+  @@index([consumerProfileId, status])
+  @@map("payments")
+}
+
+model Payout {
+  id               String        @id @default(cuid())
+  paymentId        String        @unique @map("payment_id")
+  payment          Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  providerProfileId String       @map("provider_profile_id")
+  providerProfile  ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Restrict)
+  stripeAccountId  String        @map("stripe_account_id")
+  stripeTransferId String?       @unique @map("stripe_transfer_id")
+  amountMinor      Int           @map("amount_minor")
+  currency         String        @default("COP")
+  status           PayoutStatus
+  failureReason    String?       @map("failure_reason")
+  paidAt           DateTime?     @map("paid_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  @@index([providerProfileId, status])
+  @@map("payouts")
+}
+
+model StripeWebhookEvent {
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique @map("stripe_event_id")
+  type          String
+  payload       Json
+  processedAt   DateTime? @map("processed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([type, createdAt])
+  @@map("stripe_webhook_events")
 }
 
 model AppointmentReview {

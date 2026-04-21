@@ -16,6 +16,7 @@ import {
 import { ConsumerFamilyForm } from '@/features/consumer/components/consumer-family-form';
 import { ConsumerLessonsCalendar } from '@/features/consumer/components/consumer-lessons-calendar';
 import { ConsumerUpcomingAppointmentsPanel } from '@/features/consumer/components/consumer-upcoming-appointments-panel';
+import { ConsumerPaymentsPanel } from '@/features/payments/components/consumer-payments-panel';
 import {
   consumerHubHref,
   parseConsumerHubSection,
@@ -71,6 +72,7 @@ const SECTION_LABELS: Record<ConsumerHubSection, string> = {
   resumen: 'Resumen',
   familia: 'Familia y datos',
   citas: 'Citas',
+  pagos: 'Pagos',
 };
 
 function ConsumerHubContent() {
@@ -564,6 +566,23 @@ function ConsumerHubContent() {
                   ))}
                 </ul>
               )}
+            </section>
+          </div>
+        ) : null}
+
+        {seccion === 'pagos' ? (
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="ghost"
+              className="-ml-2 text-sm text-muted-foreground"
+              onClick={() => setSeccion('resumen')}
+            >
+              ← Volver al resumen
+            </Button>
+
+            <section className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+              <ConsumerPaymentsPanel embedded />
             </section>
           </div>
         ) : null}
