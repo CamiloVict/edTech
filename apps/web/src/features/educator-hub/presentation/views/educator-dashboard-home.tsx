@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type {
   EducatorDashboardSnapshot,
   EducatorSession,
+  ProviderLaunchTask,
 } from '@/features/educator-hub/domain/types';
 import {
   formatMoneyMinor,
@@ -310,6 +311,91 @@ function DashboardUpcomingSessions({
   );
 }
 
+const LAUNCH_BANNER_STORAGE_KEY = 'trofo_provider_launch_banner_v1';
+
+function ProviderLaunchBanner({ tasks }: { tasks: ProviderLaunchTask[] }) {
+  const pending = tasks.filter((t) => !t.done);
+  const [dismissed, setDismissed] = useState(false);
+  const [storageRead, setStorageRead] = useState(false);
+
+  useEffect(() => {
+    try {
+      setDismissed(window.sessionStorage.getItem(LAUNCH_BANNER_STORAGE_KEY) === '1');
+    } catch {
+      /* ignore */
+    }
+    setStorageRead(true);
+  }, []);
+
+  if (!storageRead || dismissed || pending.length === 0) {
+    return null;
+  }
+
+  return (
+    <Surface className="border-[var(--accent)]/35 bg-[var(--accent-soft)]/20">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            Siguientes pasos para recibir reservas
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--muted-foreground)]">
+            Te falta completar {pending.length}{' '}
+            {pending.length === 1 ? 'punto' : 'puntos'} para publicar con cobro y que las
+            familias reserven con claridad. Puedes hacerlo cuando quieras; este aviso es solo
+            una guía.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="shrink-0 self-start rounded-xl"
+          onClick={() => {
+            try {
+              window.sessionStorage.setItem(LAUNCH_BANNER_STORAGE_KEY, '1');
+            } catch {
+              /* ignore */
+            }
+            setDismissed(true);
+          }}
+        >
+          Ocultar aviso
+        </Button>
+      </div>
+      <ul className="mt-4 grid gap-3 md:grid-cols-3">
+        {tasks.map((t) => (
+          <li
+            key={t.id}
+            className={`rounded-xl border p-4 ${
+              t.done
+                ? 'border-emerald-200/80 bg-emerald-50/50'
+                : 'border-[var(--border)] bg-[var(--card)]'
+            }`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+              {t.done ? 'Listo' : 'Pendiente'}
+            </p>
+            <p className="mt-1 font-semibold text-[var(--foreground)]">{t.label}</p>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+              {t.description}
+            </p>
+            {!t.done ? (
+              <Link
+                href={t.href}
+                className={buttonStyles(
+                  'primary',
+                  'mt-3 inline-flex rounded-lg !bg-[var(--primary)] text-xs hover:!bg-[var(--primary-hover)]',
+                )}
+              >
+                {t.cta}
+              </Link>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </Surface>
+  );
+}
+
 const GROWTH_CTAS: { href: string; label: string; body: string }[] = [
   {
     href: '/dashboard/provider/ofertas',
@@ -360,6 +446,7 @@ export function EducatorDashboardHome({
     reviewsLeftForFamilies,
     insights,
     profileCompletion,
+    providerLaunchTasks,
   } = snapshot;
   const currency = profile.currency;
 
@@ -367,6 +454,7 @@ export function EducatorDashboardHome({
 
   return (
     <div className="space-y-8">
+      <ProviderLaunchBanner tasks={providerLaunchTasks} />
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)] sm:text-3xl">

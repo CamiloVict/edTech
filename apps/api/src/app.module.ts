@@ -12,8 +12,11 @@ import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProviderProfilesModule } from './provider-profiles/provider-profiles.module';
 import { ProvidersModule } from './providers/providers.module';
+import { PaymentsModule } from './payments/payments.module';
+import { StripeModule } from './stripe/stripe.module';
 import { SupportModule } from './support/support.module';
 import { UsersModule } from './users/users.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { UsersModule } from './users/users.module';
     AppointmentsModule,
     ProvidersModule,
     SupportModule,
+    StripeModule,
+    PaymentsModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

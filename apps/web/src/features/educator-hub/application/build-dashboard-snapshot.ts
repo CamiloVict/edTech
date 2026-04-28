@@ -1,6 +1,7 @@
 import { PLATFORM_DEFAULT_CURRENCY } from '@repo/currency';
 
 import type { AppointmentRow } from '@/features/appointments/api/appointments-api';
+import type { ProviderConnectStatus } from '@/features/payments/api/payments-api';
 import type { ProviderProfileResponse } from '@/features/provider/api/provider-api';
 import type { ProviderRateApiRow } from '@/features/provider-rates/api/provider-rates-api';
 import type {
@@ -12,6 +13,7 @@ import type {
   EducatorStudent,
   FamilyRelationship,
   ProfileCompletionItem,
+  ProviderLaunchTask,
   ServiceMode,
 } from '../domain/types';
 
@@ -21,6 +23,8 @@ export type BuildEducatorDashboardInput = {
   appointments: AppointmentRow[];
   availabilityBlocks: { startsAt: string; endsAt: string }[];
   rates: ProviderRateApiRow[];
+  /** Estado Stripe Connect; si falta, las tareas de cobro se marcan pendientes. */
+  connectStatus: ProviderConnectStatus | null;
 };
 
 const TERMINAL = new Set<AppointmentRow['status']>([
@@ -436,6 +440,45 @@ export function buildActiveStudentsFromAppointments(
   return students;
 }
 
+export function buildProviderLaunchTasks(
+  connect: ProviderConnectStatus | null,
+  blocks: { startsAt: string; endsAt: string }[],
+  rates: ProviderRateApiRow[],
+): ProviderLaunchTask[] {
+  const stripeDone = Boolean(connect?.onboardingComplete);
+  const agendaDone = blocks.length > 0;
+  const ratesDone = rates.length > 0;
+  return [
+    {
+      id: 'stripe',
+      label: 'Cobros con Stripe (Connect)',
+      description:
+        'Sin completar esto no puedes publicar disponibilidad ni ofertas con cobro en la plataforma.',
+      done: stripeDone,
+      href: '/dashboard/provider/pagos',
+      cta: 'Configurar cobros',
+    },
+    {
+      id: 'agenda',
+      label: 'Bloques en el calendario',
+      description:
+        'Añade ventanas en Agenda para que las familias vean cuándo pueden reservar contigo.',
+      done: agendaDone,
+      href: '/dashboard/provider/agenda',
+      cta: 'Ir a agenda',
+    },
+    {
+      id: 'rates',
+      label: 'Tarifas',
+      description:
+        'Define precios desde tu vitrina; así las familias saben cuánto cuesta una sesión.',
+      done: ratesDone,
+      href: '/dashboard/provider/vitrina',
+      cta: 'Vitrina y tarifas',
+    },
+  ];
+}
+
 function openHoursNextSevenDays(
   blocks: { startsAt: string; endsAt: string }[],
   now: Date,
@@ -474,6 +517,11 @@ export function buildEducatorDashboardSnapshot(
   const profileCompletion = buildProfileCompletionFromProvider(
     input.providerProfile,
   );
+  const providerLaunchTasks = buildProviderLaunchTasks(
+    input.connectStatus,
+    input.availabilityBlocks,
+    input.rates,
+  );
 
   return {
     profile,
@@ -497,5 +545,6 @@ export function buildEducatorDashboardSnapshot(
     insights: [],
     badges: [],
     profileCompletion,
+    providerLaunchTasks,
   };
 }

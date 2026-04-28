@@ -236,6 +236,16 @@ export type ProfileCompletionItem = {
   impactLabel: string;
 };
 
+/** Tareas para publicar y cobrar: se muestran en el panel hasta completarlas (o descartar el aviso). */
+export type ProviderLaunchTask = {
+  id: string;
+  label: string;
+  description: string;
+  done: boolean;
+  href: string;
+  cta: string;
+};
+
 export type EducatorDashboardSnapshot = {
   profile: EducatorProfile;
   kpis: {
@@ -260,4 +270,5 @@ export type EducatorDashboardSnapshot = {
     scorePercent: number;
     items: ProfileCompletionItem[];
   };
+  providerLaunchTasks: ProviderLaunchTask[];
 };

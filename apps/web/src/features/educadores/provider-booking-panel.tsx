@@ -20,6 +20,7 @@ import {
   generateBookableSlots,
   groupSlotsByDay,
 } from '@/features/educadores/lib/bookable-slots';
+import { quoteFromProviderRatesForPreview } from '@/features/educadores/lib/quote-from-provider-rates';
 import {
   getLocalCustomAlternativeDatetimeInputs,
   isCustomAlternativeRangeValid,
@@ -258,6 +259,46 @@ export function ProviderBookingPanel({
     [startsLocal, endsLocal],
   );
 
+  const durationPreviewMins = useMemo(() => {
+    const a = parseDatetimeLocal(startsLocal);
+    const b = parseDatetimeLocal(endsLocal);
+    if (!a || !b || b <= a) return null;
+    return Math.round((b.getTime() - a.getTime()) / 60_000);
+  }, [startsLocal, endsLocal]);
+
+  const pricePreview = useMemo(() => {
+    if (!detail || durationPreviewMins == null) return null;
+    const offerId = selectedOfferId.trim();
+    const offer =
+      offerId && publishedOffers.length > 0
+        ? publishedOffers.find((o) => o.id === offerId) ?? null
+        : null;
+    if (offer) {
+      const mismatch = Math.abs(durationPreviewMins - offer.durationMinutes) > 1;
+      if (mismatch) {
+        return {
+          type: 'mismatch' as const,
+          offer,
+          durationMinutes: durationPreviewMins,
+        };
+      }
+      return {
+        type: 'offer' as const,
+        priceMinor: offer.priceMinor,
+        currency: offer.currency,
+      };
+    }
+    const q = quoteFromProviderRatesForPreview(detail.rates, durationPreviewMins);
+    if (!q) {
+      return { type: 'none' as const };
+    }
+    return {
+      type: 'rates' as const,
+      ...q,
+      durationMinutes: durationPreviewMins,
+    };
+  }, [detail, durationPreviewMins, selectedOfferId, publishedOffers]);
+
   const createMut = useMutation({
     mutationFn: () => {
       if (!childId.trim()) {
@@ -339,14 +380,20 @@ export function ProviderBookingPanel({
     bookingMode === 'published' &&
     Boolean(startsLocal && endsLocal && childId.trim()) &&
     availabilityBlocks.length > 0 &&
-    attendanceSectionOk;
+    attendanceSectionOk &&
+    Boolean(pricePreview) &&
+    pricePreview!.type !== 'mismatch' &&
+    pricePreview!.type !== 'none';
 
   const canSubmitCustom =
     bookingMode === 'custom' &&
     Boolean(startsLocal && endsLocal && childId.trim()) &&
     note.trim().length >= CUSTOM_NOTE_MIN &&
     isCustomAlternativeRangeValid(startsLocal, endsLocal) &&
-    attendanceSectionOk;
+    attendanceSectionOk &&
+    Boolean(pricePreview) &&
+    pricePreview!.type !== 'mismatch' &&
+    pricePreview!.type !== 'none';
 
   if (!viewer.isSignedIn) {
     return (
@@ -715,6 +762,51 @@ export function ProviderBookingPanel({
 
           {bookingError ? (
             <p className="mt-3 text-sm text-red-700">{bookingError}</p>
+          ) : null}
+
+          {pricePreview && startsLocal && endsLocal ? (
+            <div className="mt-4 rounded-xl border border-border bg-card px-3 py-2.5 text-sm">
+              {pricePreview.type === 'mismatch' ? (
+                <p className="text-amber-900">
+                  <span className="font-semibold">Duración y oferta no coinciden.</span>{' '}
+                  La oferta «{pricePreview.offer.title}» es de{' '}
+                  {pricePreview.offer.durationMinutes} min, pero el horario elegido es de{' '}
+                  {pricePreview.durationMinutes} min. Cambia la oferta, la duración (en
+                  disponibilidad publicada) o el horario.
+                </p>
+              ) : null}
+              {pricePreview.type === 'none' ? (
+                <p className="text-amber-900">
+                  Este educador no tiene tarifas publicadas para calcular el precio. No se puede
+                  enviar la solicitud sin una oferta o tarifas (p. ej. por hora).
+                </p>
+              ) : null}
+              {pricePreview.type === 'offer' ? (
+                <p className="text-foreground">
+                  <span className="font-semibold text-primary">Total al confirmar (oferta):</span>{' '}
+                  <span className="tabular-nums font-semibold">
+                    {formatMoneyMinor(pricePreview.priceMinor, pricePreview.currency)}{' '}
+                    {pricePreview.currency}
+                  </span>
+                </p>
+              ) : null}
+              {pricePreview.type === 'rates' ? (
+                <p className="text-foreground">
+                  <span className="font-semibold text-primary">
+                    Total estimado al confirmar
+                    {pricePreview.basis === 'HOUR'
+                      ? ` (${pricePreview.durationMinutes} min × tarifa por hora):`
+                      : pricePreview.basis === 'SESSION'
+                        ? ' (tarifa por sesión):'
+                        : ' (tarifa por día):'}
+                  </span>{' '}
+                  <span className="tabular-nums font-semibold">
+                    {formatMoneyMinor(pricePreview.priceMinor, pricePreview.currency)}{' '}
+                    {pricePreview.currency}
+                  </span>
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           <Button

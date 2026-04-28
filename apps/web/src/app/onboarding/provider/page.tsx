@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { Button } from '@/shared/components/ui/button';
+
 import {
   bootstrapQueryKey,
   fetchBootstrap,
@@ -21,7 +23,6 @@ import {
   FriendlyFormShell,
   HelpCallout,
 } from '@/shared/components/friendly-form-shell';
-import { Button } from '@/shared/components/ui/button';
 import { ProfilePhotoInput } from '@/shared/components/profile-photo-input';
 import { Field, Input, Select, TextArea } from '@/shared/components/ui/field';
 
@@ -60,6 +61,12 @@ export default function ProviderOnboardingPage() {
   const [availabilitySummary, setAvailabilitySummary] = useState('');
   const [kindTeacher, setKindTeacher] = useState(true);
   const [kindBabysitter, setKindBabysitter] = useState(false);
+  const [step, setStep] = useState(0);
+  const [stepError, setStepError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStepError(null);
+  }, [step]);
 
   useEffect(() => {
     const p = profileQuery.data;
@@ -155,6 +162,65 @@ export default function ProviderOnboardingPage() {
     [submit.isPending, profileQuery.isLoading, bootstrapQuery.isLoading],
   );
 
+  function validateProfessionalStep(): string | null {
+    if (!fullName.trim()) {
+      return 'Indica tu nombre público (paso 1).';
+    }
+    if (years === '' || serviceMode === '') {
+      return 'Faltan años de experiencia o la modalidad (presencial / en línea).';
+    }
+    const kinds: ProviderKind[] = [];
+    if (kindTeacher) kinds.push('TEACHER');
+    if (kindBabysitter) kinds.push('BABYSITTER');
+    if (kinds.length === 0) {
+      return 'Marca al menos una casilla: educación o cuidado infantil.';
+    }
+    return null;
+  }
+
+  function validateLocationStep(): string | null {
+    if (!streetAddress.trim() || !postalCode.trim() || !unitOrBuilding.trim()) {
+      return 'Completa dirección, código postal y unidad o edificio de tu espacio.';
+    }
+    if (!dwellingType) {
+      return 'Indica si tu espacio es casa o apartamento / consultorio en edificio.';
+    }
+    return null;
+  }
+
+  function goNextStep() {
+    if (step === 0) {
+      const err = validateProfessionalStep();
+      if (err) {
+        setStepError(err);
+        return;
+      }
+      setStep(1);
+      return;
+    }
+    if (step === 1) {
+      const err = validateLocationStep();
+      if (err) {
+        setStepError(err);
+        return;
+      }
+      setStep(2);
+      return;
+    }
+    if (step === 2) {
+      setStep(3);
+    }
+  }
+
+  const stepSubtitle =
+    step === 0
+      ? 'Paso 1 de 4: quién eres y qué ofreces.'
+      : step === 1
+        ? 'Paso 2 de 4: dónde atiendes presencialmente (si aplica).'
+        : step === 2
+          ? 'Paso 3 de 4: foto y texto libre de disponibilidad (el calendario lo harás después en el panel).'
+          : 'Paso 4 de 4: al entrar al panel te guiaremos para Stripe, agenda con bloques y tarifas.';
+
   if (profileQuery.isError || bootstrapQuery.isError) {
     return (
       <div className="mx-auto max-w-lg p-8 text-base text-red-700">
@@ -170,162 +236,216 @@ export default function ProviderOnboardingPage() {
     <FriendlyFormShell
       maxWidthClass="max-w-3xl"
       title="Tu perfil profesional"
-      subtitle="Un solo formulario. Las familias lo leen antes de escribirte; edítalo cuando quieras en Mi perfil."
+      subtitle={stepSubtitle}
+      steps={[
+        { label: 'Sobre ti' },
+        { label: 'Ubicación' },
+        { label: 'Foto y texto' },
+        { label: 'Siguientes pasos' },
+      ]}
+      currentStep={step + 1}
       footer={
-        <Button
-          className="w-full py-3.5 text-base"
-          disabled={busy}
-          onClick={() => submit.mutate()}
-        >
-          {busy ? 'Guardando…' : 'Guardar y continuar'}
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          {step > 0 ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full py-3.5 text-base sm:w-auto"
+              disabled={busy}
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+            >
+              Atrás
+            </Button>
+          ) : (
+            <span className="hidden sm:block sm:w-24" aria-hidden />
+          )}
+          {step < 3 ? (
+            <Button
+              type="button"
+              className="w-full py-3.5 text-base sm:ml-auto sm:min-w-[11rem]"
+              disabled={busy}
+              onClick={() => goNextStep()}
+            >
+              Continuar
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="w-full py-3.5 text-base sm:ml-auto sm:min-w-[11rem]"
+              disabled={busy}
+              onClick={() => submit.mutate()}
+            >
+              {busy ? 'Guardando…' : 'Guardar y entrar al panel'}
+            </Button>
+          )}
+        </div>
       }
     >
       <HelpCallout title="Tip" compact>
-        Lenguaje sencillo y frases cortas. Puedes marcar educación y cuidado a la
-        vez.
+        Lenguaje sencillo y frases cortas. El calendario con bloques y las tarifas los
+        configuras después (te lo recordaremos en el panel).
       </HelpCallout>
 
-      <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-4 lg:col-span-2">
-            <h2 className="text-base font-bold text-stone-900">Sobre ti</h2>
-            <Field label="Nombre público">
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-            </Field>
-            <Field label="Descripción (bio)">
-              <TextArea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Experiencia, edades, cómo trabajas…"
-                rows={4}
-              />
-            </Field>
-          </div>
-          <Field label="Años de experiencia">
-            <Input
-              type="number"
-              min={0}
-              max={80}
-              value={years === '' ? '' : String(years)}
-              onChange={(e) => {
-                const v = e.target.value;
-                setYears(v === '' ? '' : Number(v));
-              }}
-            />
-          </Field>
-          <Field label="Ciudad">
-            <Input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Ej. Medellín"
-            />
-          </Field>
-          <div className="lg:col-span-2">
-            <Field label="Dirección de tu espacio (calle y número)">
+      {stepError ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950">
+          {stepError}
+        </p>
+      ) : null}
+
+      {step === 0 ? (
+        <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-base font-bold text-stone-900">Sobre ti</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-4 lg:col-span-2">
+              <Field label="Nombre público">
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </Field>
+              <Field label="Descripción (bio)">
+                <TextArea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Experiencia, edades, cómo trabajas…"
+                  rows={4}
+                />
+              </Field>
+            </div>
+            <Field label="Años de experiencia">
               <Input
-                value={streetAddress}
-                onChange={(e) => setStreetAddress(e.target.value)}
-                placeholder="Para citas presenciales en tu ubicación"
+                type="number"
+                min={0}
+                max={80}
+                value={years === '' ? '' : String(years)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setYears(v === '' ? '' : Number(v));
+                }}
               />
             </Field>
-          </div>
-          <Field label="Código postal">
-            <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
-          </Field>
-          <Field label="Unidad o edificio">
-            <Input
-              value={unitOrBuilding}
-              onChange={(e) => setUnitOrBuilding(e.target.value)}
-              placeholder="Consultorio, piso, torre…"
-            />
-          </Field>
-          <Field label="Tipo de espacio">
-            <Select
-              value={dwellingType}
-              onChange={(e) =>
-                setDwellingType(e.target.value as 'HOUSE' | 'APARTMENT' | '')
-              }
-            >
-              <option value="">Selecciona…</option>
-              <option value="HOUSE">Casa / local en casa</option>
-              <option value="APARTMENT">Apartamento / edificio / consultorio</option>
-            </Select>
-          </Field>
-          <div className="lg:col-span-2">
-            <Field label="Especialidades (separadas por coma)">
+            <Field label="Ciudad">
               <Input
-                value={focus}
-                onChange={(e) => setFocus(e.target.value)}
-                placeholder="Estimulación, inglés, tareas…"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Ej. Medellín"
               />
             </Field>
+            <div className="lg:col-span-2">
+              <Field label="Especialidades (separadas por coma)">
+                <Input
+                  value={focus}
+                  onChange={(e) => setFocus(e.target.value)}
+                  placeholder="Estimulación, inglés, tareas…"
+                />
+              </Field>
+            </div>
+            <div className="lg:col-span-2">
+              <Field label="Modalidad">
+                <Select
+                  value={serviceMode}
+                  onChange={(e) =>
+                    setServiceMode(e.target.value as ServiceMode | '')
+                  }
+                >
+                  <option value="">Elige…</option>
+                  {modes.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
           </div>
-          <div className="lg:col-span-2">
-            <Field label="Modalidad">
+
+          <div className="border-t border-stone-100 pt-4">
+            <h2 className="mb-3 text-base font-bold text-stone-900">
+              ¿Qué ofreces? (marca una o dos)
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label
+                className={`flex min-h-[4.5rem] cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition ${
+                  kindTeacher
+                    ? 'border-emerald-600 bg-emerald-50/60'
+                    : 'border-stone-200 bg-white hover:border-stone-300'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 shrink-0 rounded border-stone-300 text-emerald-800"
+                  checked={kindTeacher}
+                  onChange={(e) => setKindTeacher(e.target.checked)}
+                />
+                <span className="text-sm font-bold leading-tight text-stone-900">
+                  Clases / educación
+                </span>
+              </label>
+              <label
+                className={`flex min-h-[4.5rem] cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition ${
+                  kindBabysitter
+                    ? 'border-emerald-600 bg-emerald-50/60'
+                    : 'border-stone-200 bg-white hover:border-stone-300'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 shrink-0 rounded border-stone-300 text-emerald-800"
+                  checked={kindBabysitter}
+                  onChange={(e) => setKindBabysitter(e.target.checked)}
+                />
+                <span className="text-sm font-bold leading-tight text-stone-900">
+                  Cuidado / babysitting
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {step === 1 ? (
+        <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-base font-bold text-stone-900">Tu espacio de trabajo</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Field label="Dirección (calle y número)">
+                <Input
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  placeholder="Para citas presenciales en tu ubicación"
+                />
+              </Field>
+            </div>
+            <Field label="Código postal">
+              <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
+            </Field>
+            <Field label="Unidad o edificio">
+              <Input
+                value={unitOrBuilding}
+                onChange={(e) => setUnitOrBuilding(e.target.value)}
+                placeholder="Consultorio, piso, torre…"
+              />
+            </Field>
+            <Field label="Tipo de espacio">
               <Select
-                value={serviceMode}
+                value={dwellingType}
                 onChange={(e) =>
-                  setServiceMode(e.target.value as ServiceMode | '')
+                  setDwellingType(e.target.value as 'HOUSE' | 'APARTMENT' | '')
                 }
               >
-                <option value="">Elige…</option>
-                {modes.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
+                <option value="">Selecciona…</option>
+                <option value="HOUSE">Casa / local en casa</option>
+                <option value="APARTMENT">Apartamento / edificio / consultorio</option>
               </Select>
             </Field>
           </div>
-        </div>
+        </section>
+      ) : null}
 
-        <div className="border-t border-stone-100 pt-4">
-          <h2 className="mb-3 text-base font-bold text-stone-900">
-            ¿Qué ofreces? (marca una o dos)
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label
-              className={`flex min-h-[4.5rem] cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition ${
-                kindTeacher
-                  ? 'border-emerald-600 bg-emerald-50/60'
-                  : 'border-stone-200 bg-white hover:border-stone-300'
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="h-5 w-5 shrink-0 rounded border-stone-300 text-emerald-800"
-                checked={kindTeacher}
-                onChange={(e) => setKindTeacher(e.target.checked)}
-              />
-              <span className="text-sm font-bold leading-tight text-stone-900">
-                Clases / educación
-              </span>
-            </label>
-            <label
-              className={`flex min-h-[4.5rem] cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition ${
-                kindBabysitter
-                  ? 'border-emerald-600 bg-emerald-50/60'
-                  : 'border-stone-200 bg-white hover:border-stone-300'
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="h-5 w-5 shrink-0 rounded border-stone-300 text-emerald-800"
-                checked={kindBabysitter}
-                onChange={(e) => setKindBabysitter(e.target.checked)}
-              />
-              <span className="text-sm font-bold leading-tight text-stone-900">
-                Cuidado / babysitting
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div className="border-t border-stone-100 pt-4">
-          <h2 className="mb-3 text-base font-bold text-stone-900">
-            Foto y disponibilidad
-          </h2>
+      {step === 2 ? (
+        <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-base font-bold text-stone-900">Foto y disponibilidad (texto)</h2>
+          <p className="text-sm text-stone-600">
+            En el panel podrás marcar bloques reales en el calendario. Aquí puedes dejar una
+            referencia breve (opcional).
+          </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Field
@@ -340,7 +460,7 @@ export default function ProviderOnboardingPage() {
               </Field>
             </div>
             <div className="sm:col-span-2">
-              <Field label="Disponibilidad">
+              <Field label="Disponibilidad (texto libre, opcional)">
                 <TextArea
                   value={availabilitySummary}
                   onChange={(e) => setAvailabilitySummary(e.target.value)}
@@ -350,8 +470,60 @@ export default function ProviderOnboardingPage() {
               </Field>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
+
+      {step === 3 ? (
+        <section className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-base font-bold text-stone-900">Después de guardar</h2>
+          <HelpCallout title="Importante" compact>
+            Al entrar al panel verás un resumen con enlaces a cobros (Stripe), agenda con
+            horas publicadas y tarifas. Puedes posponerlo, pero sin eso las familias no
+            podrán reservarte con cobro automático.
+          </HelpCallout>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            <li className="rounded-xl border border-stone-200 bg-stone-50/50 p-4">
+              <p className="text-sm font-bold text-stone-900">Cobros (Stripe Connect)</p>
+              <p className="mt-1 text-xs text-stone-600">
+                Necesario para publicar disponibilidad y ofertas con pago.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Lo harás en: Panel → Pagos (después de guardar).
+              </p>
+            </li>
+            <li className="rounded-xl border border-stone-200 bg-stone-50/50 p-4">
+              <p className="text-sm font-bold text-stone-900">Agenda con bloques</p>
+              <p className="mt-1 text-xs text-stone-600">
+                Las familias reservan en las ventanas que publiques en el calendario.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Lo harás en: Panel → Agenda y horarios.
+              </p>
+            </li>
+            <li className="rounded-xl border border-stone-200 bg-stone-50/50 p-4">
+              <p className="text-sm font-bold text-stone-900">Tarifas</p>
+              <p className="mt-1 text-xs text-stone-600">
+                Define precios claros para sesiones u ofertas.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Lo harás en: Panel → Vitrina (tarifas).
+              </p>
+            </li>
+            <li className="rounded-xl border border-stone-200 bg-stone-50/50 p-4">
+              <p className="text-sm font-bold text-stone-900">Ofertas educativas</p>
+              <p className="mt-1 text-xs text-stone-600">
+                Publica lo que enseñas o cuidas con título y detalle.
+              </p>
+              <p className="mt-2 text-xs text-stone-500">
+                Lo harás en: Panel → Ofertas educativas.
+              </p>
+            </li>
+          </ul>
+          <p className="text-center text-sm text-stone-600">
+            ¿Listo? Pulsa «Guardar y entrar al panel» abajo.
+          </p>
+        </section>
+      ) : null}
 
       {submit.isError ? (
         <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">

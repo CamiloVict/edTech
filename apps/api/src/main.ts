@@ -1,6 +1,6 @@
 import './load-dev-env';
 
-import { json, urlencoded } from 'express';
+import { json, raw, urlencoded } from 'express';
 
 import { AppModule } from './app.module';
 import { NestFactory } from '@nestjs/core';
@@ -9,6 +9,9 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   console.log('[bootstrap] NestFactory.create finished');
+
+  // Stripe exige el cuerpo sin parsear para validar firmas webhook.
+  app.use('/v1/webhooks/stripe', raw({ type: 'application/json' }));
 
   /** Fotos en base64 (data URL) desde el cliente; el límite por defecto de Express es demasiado bajo. */
   app.use(json({ limit: '2mb' }));

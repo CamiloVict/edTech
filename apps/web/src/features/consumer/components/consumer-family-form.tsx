@@ -39,6 +39,19 @@ function newRow(): ChildRow {
   };
 }
 
+function buildMinimumBirthDateAllowed(): Date {
+  const now = new Date();
+  const threshold = new Date(now);
+  threshold.setMonth(threshold.getMonth() - 6);
+  return threshold;
+}
+
+function isAtLeastSixMonthsOld(birthDateIso: string): boolean {
+  const birthDate = new Date(`${birthDateIso}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return false;
+  return birthDate <= buildMinimumBirthDateAllowed();
+}
+
 /**
  * Formulario de perfil familiar e hijos. La navegación y gates de bootstrap viven en el hub.
  */
@@ -67,6 +80,10 @@ export function ConsumerFamilyForm() {
   const [relationship, setRelationship] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [children, setChildren] = useState<ChildRow[]>([newRow()]);
+  const maxBirthDate = useMemo(
+    () => buildMinimumBirthDateAllowed().toISOString().slice(0, 10),
+    [],
+  );
 
   useEffect(() => {
     const p = profileQuery.data;
@@ -126,6 +143,11 @@ export function ConsumerFamilyForm() {
       for (const row of children) {
         if (!row.firstName.trim() || !row.birthDate) {
           throw new Error('Cada niño necesita nombre y fecha de nacimiento.');
+        }
+        if (!isAtLeastSixMonthsOld(row.birthDate)) {
+          throw new Error(
+            'La fecha de nacimiento no puede ser futura y el niño debe tener al menos 6 meses.',
+          );
         }
         if (row.id) {
           await patchChild(getToken, row.id, {
@@ -235,7 +257,7 @@ export function ConsumerFamilyForm() {
         </Field>
         <Field
           label="Dirección (calle y número)"
-          hint="Se usará para citas presenciales en tu domicilio."
+          hint="Esta dirección solo es visible para el docente que acepte una sesión contigo; ningún otro educador podrá verla."
         >
           <Input
             value={streetAddress}
@@ -323,6 +345,7 @@ export function ConsumerFamilyForm() {
               <Input
                 type="date"
                 value={row.birthDate}
+                max={maxBirthDate}
                 onChange={(e) =>
                   setChildren((prev) =>
                     prev.map((r) =>

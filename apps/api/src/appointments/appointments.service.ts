@@ -12,11 +12,13 @@ import {
   Prisma,
   ProviderKind,
   ProviderOfferStatus,
+  RateUnit,
   ServiceMode,
   UserRole,
 } from '@repo/database';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { PaymentsService } from '../payments/payments.service';
 import { UsersService } from '../users/users.service';
 import {
   ALTERNATIVE_SCHEDULE_UTC_DAY_SPAN,
@@ -48,11 +50,52 @@ function isBabysitterOnlyKinds(kinds: ProviderKind[]): boolean {
   return kinds.length > 0 && kinds.every((k) => k === ProviderKind.BABYSITTER);
 }
 
+const MIN_APPOINTMENT_MINUTES = 15;
+const MAX_APPOINTMENT_MINUTES = 8 * 60;
+
+type RateQuoteRow = { unit: RateUnit; amountMinor: number; currency: string };
+
+function appointmentDurationMinutes(startsAt: Date, endsAt: Date): number {
+  return Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
+}
+
+/** Primera tarifa por unidad (orden `sortOrder` ya aplicado en la query). */
+function quoteFromProviderRates(
+  rates: RateQuoteRow[],
+  durationMinutes: number,
+): { priceMinor: number; currency: string } | null {
+  const hourRates = rates.filter((r) => r.unit === RateUnit.HOUR);
+  if (hourRates.length > 0) {
+    const r = hourRates[0]!;
+    const raw = (r.amountMinor * durationMinutes) / 60;
+    const priceMinor = Math.max(1, Math.round(raw));
+    return { priceMinor, currency: r.currency.trim().toUpperCase() || 'COP' };
+  }
+  const sessionRates = rates.filter((r) => r.unit === RateUnit.SESSION);
+  if (sessionRates.length > 0) {
+    const r = sessionRates[0]!;
+    return {
+      priceMinor: Math.max(1, r.amountMinor),
+      currency: r.currency.trim().toUpperCase() || 'COP',
+    };
+  }
+  const dayRates = rates.filter((r) => r.unit === RateUnit.DAY);
+  if (dayRates.length > 0) {
+    const r = dayRates[0]!;
+    return {
+      priceMinor: Math.max(1, r.amountMinor),
+      currency: r.currency.trim().toUpperCase() || 'COP',
+    };
+  }
+  return null;
+}
+
 @Injectable()
 export class AppointmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly users: UsersService,
+    private readonly payments: PaymentsService,
   ) {}
 
   private async requireConsumer(clerkUserId: string) {
@@ -160,6 +203,7 @@ export class AppointmentsService {
 
   async create(clerkUserId: string, dto: CreateAppointmentDto) {
     const { profile } = await this.requireConsumer(clerkUserId);
+    await this.payments.assertConsumerCanBook(clerkUserId);
     if (!profile.isProfileCompleted) {
       throw new ForbiddenException(
         'Complete your family profile before requesting an appointment',
@@ -181,6 +225,18 @@ export class AppointmentsService {
     }
     if (endsAt <= now) {
       throw new BadRequestException('Appointment must end in the future');
+    }
+
+    const durationMinutes = appointmentDurationMinutes(startsAt, endsAt);
+    if (durationMinutes < MIN_APPOINTMENT_MINUTES) {
+      throw new BadRequestException(
+        `La sesión debe durar al menos ${MIN_APPOINTMENT_MINUTES} minutos`,
+      );
+    }
+    if (durationMinutes > MAX_APPOINTMENT_MINUTES) {
+      throw new BadRequestException(
+        `La sesión no puede superar ${MAX_APPOINTMENT_MINUTES / 60} horas`,
+      );
     }
 
     const provider = await this.prisma.providerProfile.findUnique({
@@ -277,6 +333,9 @@ export class AppointmentsService {
     const offerIdTrim = dto.providerOfferId?.trim() ?? '';
     let providerOfferId: string | null = null;
     let offerTitleSnapshot: string | null = null;
+    let quotedPriceMinor: number | null = null;
+    let quotedCurrency: string | null = null;
+
     if (offerIdTrim) {
       const offer = await this.prisma.providerOffer.findFirst({
         where: {
@@ -284,15 +343,43 @@ export class AppointmentsService {
           providerProfileId: dto.providerProfileId,
           status: ProviderOfferStatus.PUBLISHED,
         },
-        select: { id: true, title: true },
+        select: {
+          id: true,
+          title: true,
+          priceMinor: true,
+          currency: true,
+          durationMinutes: true,
+        },
       });
       if (!offer) {
         throw new BadRequestException(
           'La oferta indicada no es válida o no está publicada para este educador.',
         );
       }
+      const durationDiff = Math.abs(durationMinutes - offer.durationMinutes);
+      if (durationDiff > 1) {
+        throw new BadRequestException(
+          `La duración de la reserva (${durationMinutes} min) debe coincidir con la oferta «${offer.title.trim() || 'oferta'}» (${offer.durationMinutes} min).`,
+        );
+      }
       providerOfferId = offer.id;
       offerTitleSnapshot = offer.title.trim() || null;
+      quotedPriceMinor = offer.priceMinor;
+      quotedCurrency = offer.currency.trim().toUpperCase() || 'COP';
+    } else {
+      const rates = await this.prisma.providerRate.findMany({
+        where: { providerProfileId: dto.providerProfileId },
+        orderBy: { sortOrder: 'asc' },
+        select: { unit: true, amountMinor: true, currency: true },
+      });
+      const quoted = quoteFromProviderRates(rates, durationMinutes);
+      if (!quoted) {
+        throw new BadRequestException(
+          'Este educador no tiene tarifas publicadas para calcular el precio según la duración. Publica al menos una tarifa por hora (o por sesión) o elige una oferta al reservar.',
+        );
+      }
+      quotedPriceMinor = quoted.priceMinor;
+      quotedCurrency = quoted.currency;
     }
 
     return this.prisma.appointment.create({
@@ -310,6 +397,8 @@ export class AppointmentsService {
         inPersonVenueHost: InPersonVenueHost.CONSUMER,
         providerOfferId,
         offerTitleSnapshot,
+        quotedPriceMinor,
+        quotedCurrency,
       },
       include: this.appointmentInclude(),
     });
@@ -468,6 +557,7 @@ export class AppointmentsService {
             );
           }
         }
+        await this.payments.chargeAppointmentOnProviderAccept(appointmentId);
       }
 
       return this.prisma.appointment.update({
