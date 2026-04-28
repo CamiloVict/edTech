@@ -19,6 +19,22 @@ export class ConsumerProfilesService {
     private readonly users: UsersService,
   ) {}
 
+  private ensureBirthDateAllowed(birthDateRaw: string) {
+    const birthDate = new Date(`${birthDateRaw}T00:00:00`);
+    if (Number.isNaN(birthDate.getTime())) {
+      throw new BadRequestException('birthDate must be a valid date');
+    }
+
+    const threshold = new Date();
+    threshold.setMonth(threshold.getMonth() - 6);
+
+    if (birthDate > threshold) {
+      throw new BadRequestException(
+        'birthDate cannot be in the future and must be at least 6 months ago',
+      );
+    }
+  }
+
   private async requireConsumer(clerkUserId: string) {
     const user = await this.users.findByClerkOrThrow(clerkUserId);
     if (user.role !== UserRole.CONSUMER) {
@@ -68,6 +84,7 @@ export class ConsumerProfilesService {
 
   async addChild(clerkUserId: string, dto: CreateChildDto) {
     const { profile } = await this.requireConsumer(clerkUserId);
+    this.ensureBirthDateAllowed(dto.birthDate);
     return this.prisma.child.create({
       data: {
         consumerProfileId: profile.id,
@@ -86,6 +103,9 @@ export class ConsumerProfilesService {
     });
     if (!child) {
       throw new NotFoundException('Child not found');
+    }
+    if (dto.birthDate) {
+      this.ensureBirthDateAllowed(dto.birthDate);
     }
     return this.prisma.child.update({
       where: { id: child.id },
